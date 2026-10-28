@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0b0c">
+<meta name="color-scheme" content="dark">
+<meta name="robots" content="noindex, nofollow">
+<title>Photorealistic</title>
+<link rel="stylesheet" href="/receiver.css">
+<link rel="stylesheet" href="/index.css">
+</head>
+<body>
+  <main id="setup">
+    <p class="eyebrow">Photorealistic</p>
+    <h1 class="title">Pluck</h1>
+    <p class="lede">Take a photo with their phone. Pluck it out of the screen. Push it into yours.</p>
+
+    <section id="empty">
+      <button id="create" class="primary">Create my performer code</button>
+      <form id="useForm" class="row">
+        <input id="useInput" placeholder="Or enter an existing code" autocomplete="off" autocapitalize="characters" spellcheck="false">
+        <button type="submit" class="secondary small">Use</button>
+      </form>
+    </section>
+
+    <section id="have" hidden>
+      <p class="label">Your code</p>
+      <p id="codeText" class="code"></p>
+
+      <div id="qr" class="qr" aria-label="QR code"></div>
+      <p id="urlText" class="url"></p>
+
+      <a id="openReceiver" class="button primary">Open my receiver</a>
+      <button id="download" class="secondary">Download QR (PNG)</button>
+
+      <details>
+        <summary>Test the spectator page</summary>
+        <p class="hint">Exit after the pluck:</p>
+        <div class="links">
+          <a id="exitCamera" href="#">Back to camera</a>
+          <a id="exitGoogle" href="#">Google</a>
+          <a id="exitBlack" href="#">Stay black</a>
+          <a id="exitDebug" href="#">Debug</a>
+        </div>
+      </details>
+
+      <ul class="notes">
+        <li>Print the QR small. Stick it on your palm, watch strap or a card. The phone camera picks it up from a hand's length away.</li>
+        <li>Open your receiver first and tap Arm, so the photo lands the moment it's taken.</li>
+        <li>Photos are never stored. They pass straight to your phone and are dropped.</li>
+      </ul>
+
+      <button id="reset" class="ghost">Use a different code</button>
+    </section>
+  </main>
+  <script src="/vendor/qrcode.js"></script>
+  <script src="/index.js"></script>
+</body>
+</html>

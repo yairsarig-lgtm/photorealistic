@@ -1,0 +1,118 @@
+html, body {
+  margin: 0;
+  height: 100%;
+  background: #000;
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#cam {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #000;
+}
+#cam.mirror { transform: scaleX(-1); }
+
+#controls {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 24px 32px calc(28px + env(safe-area-inset-bottom));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(to top, rgba(0,0,0,.55), rgba(0,0,0,0));
+}
+#controls .spacer { width: 44px; height: 44px; }
+
+#shutter {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  border: 4px solid rgba(255,255,255,.95);
+  background: transparent;
+  padding: 0;
+  display: grid;
+  place-items: center;
+}
+#shutter span {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform .08s ease;
+}
+#shutter:active span { transform: scale(.88); }
+
+#flip {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 0;
+  background: rgba(255,255,255,.18) center / 22px no-repeat
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 12a9 9 0 0 1 15.5-6.2L21 8'/%3E%3Cpath d='M21 3v5h-5'/%3E%3Cpath d='M21 12a9 9 0 0 1-15.5 6.2L3 16'/%3E%3Cpath d='M3 21v-5h5'/%3E%3C/svg%3E");
+}
+
+#stage {
+  position: fixed;
+  inset: 0;
+  background: #000;
+}
+#stage[hidden] { display: none; }
+
+#photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transform-origin: 50% 50%;
+  will-change: transform, filter, opacity, border-radius;
+  pointer-events: none;
+}
+
+/* Faint "viewer" chrome around the photo; it slides away on the first tap. */
+.bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  background: #0d0d0d;
+  z-index: 1;
+  will-change: transform, opacity;
+}
+#barTop { top: 0; height: calc(56px + env(safe-area-inset-top)); }
+#barBottom { bottom: 0; height: calc(88px + env(safe-area-inset-bottom)); }
+
+#flash {
+  position: fixed;
+  inset: 0;
+  background: #fff;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 5;
+}
+
+#debug {
+  position: fixed;
+  left: 8px;
+  top: 8px;
+  z-index: 10;
+  font: 11px/1.3 ui-monospace, monospace;
+  color: #7f7;
+  background: rgba(0,0,0,.6);
+  padding: 4px 6px;
+  border-radius: 4px;
+  pointer-events: none;
+  max-width: 80vw;
+  white-space: pre-wrap;
+}
+#debug[hidden] { display: none; }

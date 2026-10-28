@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<meta name="color-scheme" content="dark">
+<meta name="robots" content="noindex, nofollow">
+<title>Receiver</title>
+<link rel="stylesheet" href="/receiver.css">
+</head>
+<body>
+  <!-- Setup screen: only the performer sees this -->
+  <main id="setup">
+    <p class="eyebrow">Pluck · receiver</p>
+    <h1 id="code">——</h1>
+    <p class="status"><span id="conn" class="pill">Connecting…</span></p>
+    <p class="status"><span id="photoState" class="pill dim">No photo yet</span></p>
+
+    <button id="arm" class="primary">Arm — go black</button>
+    <button id="test" class="secondary">Send a test photo</button>
+
+    <ul class="notes">
+      <li>Arm before the trick. The screen stays black and awake.</li>
+      <li>A short buzz means the photo arrived. A double buzz means it was plucked on their phone.</li>
+      <li>Touch the black screen to reveal. It grows out of your fingertip.</li>
+      <li>Hold the top-left corner for 1.5 s to reset. Hold it again on the empty black screen to come back here.</li>
+    </ul>
+    <a id="back" class="link" href="/">Show my QR code</a>
+  </main>
+
+  <!-- Armed / performance screen -->
+  <div id="stage" hidden>
+    <img id="photo" alt="" draggable="false">
+    <div id="dot"></div>
+    <div id="corner"></div>
+  </div>
+
+  <script src="/receiver.js"></script>
+</body>
+</html>

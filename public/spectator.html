@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<meta name="color-scheme" content="dark">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>Camera</title>
+<link rel="stylesheet" href="/spectator.css">
+</head>
+<body>
+  <!-- State 0: viewfinder (only the performer ever sees this) -->
+  <video id="cam" playsinline muted autoplay></video>
+  <div id="controls">
+    <button id="flip" aria-label="Switch camera"></button>
+    <button id="shutter" aria-label="Take photo"><span></span></button>
+    <div class="spacer"></div>
+  </div>
+
+  <!-- States 1–3: the photo -->
+  <div id="stage" hidden>
+    <div id="barTop" class="bar"></div>
+    <img id="photo" alt="" draggable="false">
+    <div id="barBottom" class="bar"></div>
+  </div>
+
+  <div id="flash"></div>
+  <div id="debug" hidden></div>
+
+  <script src="/spectator.js"></script>
+</body>
+</html>

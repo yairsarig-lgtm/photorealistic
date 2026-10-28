@@ -37,15 +37,14 @@ One Cloudflare Worker (`src/index.ts`) serves the pages from `public/` and route
 
 ## Deploy
 
-Automatic on every push to `main`, once two repository secrets are set:
+**Recommended: connect the repo in Cloudflare (no tokens).** Cloudflare then deploys automatically on every push to `main`.
 
-1. Create a free Cloudflare account. In the dashboard, open **Workers & Pages** once so it assigns you a `*.workers.dev` subdomain.
-2. **My Profile → API Tokens → Create Token →** template **"Edit Cloudflare Workers"** → create, copy the token.
-3. Copy your **Account ID** (Workers & Pages overview, right side).
-4. In GitHub: **Settings → Secrets and variables → Actions → New repository secret**:
-   - `CLOUDFLARE_API_TOKEN`
-   - `CLOUDFLARE_ACCOUNT_ID`
-5. **Actions → Deploy → Run workflow** (or push any commit). The log prints the live URL, e.g. `https://photorealistic.<you>.workers.dev`.
+1. Create a free Cloudflare account at dash.cloudflare.com.
+2. **Workers & Pages → Create application → GitHub.** Authorize Cloudflare's GitHub app for this repository.
+3. Pick `photorealistic`. Keep the project name **`photorealistic`** (it must match `name` in `wrangler.jsonc`). Leave the build command empty; deploy command `npx wrangler deploy`.
+4. **Save and Deploy.** The live URL is `https://photorealistic.<your-subdomain>.workers.dev`.
+
+**Alternative: GitHub Actions** (`.github/workflows/deploy.yml`). Add repository secrets `CLOUDFLARE_API_TOKEN` (Cloudflare **Account API tokens → Create Token → Edit Cloudflare Workers**) and `CLOUDFLARE_ACCOUNT_ID`. Without them the workflow only typechecks and skips the deploy.
 
 Manual alternative from a computer: `npm install`, then `npx wrangler login` and `npx wrangler deploy`.
 

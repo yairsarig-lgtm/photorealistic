@@ -261,24 +261,63 @@
     setTimeout(exit, 250);
   }
 
+  const CAMERA_INTENTS = [
+    // Default camera app, still-photo mode.
+    "intent:#Intent;action=android.media.action.STILL_IMAGE_CAMERA;end",
+    // Some phones only answer the generic "take a picture" action.
+    "intent:#Intent;action=android.media.action.IMAGE_CAPTURE;end",
+  ];
+
   function exit() {
     if (exited) return;
     exited = true;
     log("exit:", EXIT);
     if (EXIT === "google") {
       location.replace(CLEAN_URL);
-    } else if (EXIT === "camera") {
-      // Ask Android to open the default camera app. If it works, this tab is
-      // replaced with Google as soon as it goes to the background.
-      location.href = "intent:#Intent;action=android.media.action.STILL_IMAGE_CAMERA;end";
+      return;
     }
-    // "black": stay black; the performer swipes home.
+    if (EXIT === "black") {
+      reportExit("black");
+      return; // the performer swipes back/home
+    }
+
+    // "camera": try, in order, each way of leaving on our own.
+    // 1) Close the tab. Chrome allows this when the tab was opened by another
+    //    app (like the camera), in which case Android returns to that app.
+    try { window.close(); } catch (_) {}
+
+    // 2) Still here? Ask Android to open the camera app.
+    let i = 0;
+    const tryNext = () => {
+      if (document.visibilityState !== "visible") return; // we left
+      if (i >= CAMERA_INTENTS.length) return;
+      log("intent", i);
+      location.href = CAMERA_INTENTS[i++];
+      setTimeout(tryNext, 400);
+    };
+    setTimeout(tryNext, 80);
+    reportExit("camera");
+  }
+
+  // Tell the performer's receiver whether the page managed to leave,
+  // so exits can be tested without watching the spectator's phone.
+  let exitReported = false;
+  function reportExit(mode) {
+    setTimeout(() => {
+      if (exitReported) return;
+      exitReported = true;
+      const left = document.visibilityState !== "visible";
+      log("exit result:", left ? "left" : "stuck");
+      sendEvent(left ? "exit-left" : "exit-stuck-" + mode);
+    }, 1600);
   }
 
   // Whenever we leave after the trick, leave an innocent tab behind.
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden" && state === "gone") {
-      location.replace(CLEAN_URL);
+      if (!exitReported) { exitReported = true; sendEvent("exit-left"); }
+      // Let the report go out, then leave an innocent tab behind.
+      setTimeout(() => location.replace(CLEAN_URL), 300);
     }
     if (document.visibilityState === "visible" && state !== "gone") keepAwake();
   });

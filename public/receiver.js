@@ -7,7 +7,7 @@
   const code = (location.pathname.split("/")[2] || "").toUpperCase();
   const $ = (id) => document.getElementById(id);
   const setup = $("setup"), stage = $("stage"), photo = $("photo"), dot = $("dot"), corner = $("corner");
-  const connEl = $("conn"), photoStateEl = $("photoState");
+  const connEl = $("conn"), photoStateEl = $("photoState"), exitEl = $("exitState");
 
   $("code").textContent = code || "——";
   $("back").href = "/?code=" + encodeURIComponent(code);
@@ -47,6 +47,13 @@
         if (msg.type === "event" && msg.event === "vanished") {
           dot.classList.add("gone");
           buzz([30, 70, 30]);
+        } else if (msg.type === "event" && msg.event.startsWith("exit-")) {
+          const left = msg.event === "exit-left";
+          exitEl.textContent = left
+            ? "Last exit: their phone left the page on its own"
+            : "Last exit: their page stayed open (" + msg.event.replace("exit-stuck-", "") + ")";
+          exitEl.className = "pill" + (left ? " ok" : " dim");
+          exitEl.hidden = false;
         }
       } catch (_) {}
     };

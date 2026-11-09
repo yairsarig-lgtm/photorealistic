@@ -223,6 +223,13 @@
     }
   }
 
+  // The symbol's centre stays on the viewfinder, above the button bar.
+  function keepAboveButtons() {
+    const bar = document.getElementById("bottom").getBoundingClientRect().top;
+    sym.x = Math.max(0, Math.min(innerWidth, sym.x));
+    sym.y = Math.max(0, Math.min(bar - 12, sym.y));
+  }
+
   function apply() {
     const pts = [...pointers.values()];
     if (!g || !pts.length) return;
@@ -240,6 +247,7 @@
       sym.y = g.y + (m.y - g.m.y);
       sym.size = size;
       sym.rot = g.rot + da;
+      keepAboveButtons();
     }
     renderOverlay();
   }
@@ -254,7 +262,8 @@
     }
   }
   const onTouch = (e) => {
-    if (e.target.closest && e.target.closest("#bottom") && e.type === "touchstart") return;
+    // Touches on the buttons are left alone, so taps on them still work.
+    if (e.target.closest && e.target.closest("#bottom")) return;
     e.preventDefault();
     const before = pointers.size;
     readTouches(e.touches);

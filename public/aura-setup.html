@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0b0c">
+<meta name="color-scheme" content="dark">
+<meta name="robots" content="noindex, nofollow">
+<title>Aura</title>
+<link rel="stylesheet" href="/receiver.css?v=2">
+<link rel="stylesheet" href="/index.css?v=2">
+</head>
+<body>
+  <main id="setup">
+    <p class="eyebrow">Photorealistic</p>
+    <h1 class="title">Aura</h1>
+    <p class="lede">Their camera. Your symbol, already in the photo.</p>
+
+    <p class="label">The Aura QR</p>
+    <div id="qr" class="qr" aria-label="QR code"></div>
+    <p id="urlText" class="url"></p>
+
+    <button id="download" class="primary">Download QR (PNG)</button>
+    <a id="open" class="button secondary-link">Open the Aura camera on this phone</a>
+
+    <p class="label">How it runs</p>
+    <ol class="notes">
+      <li>On their phone: open the camera, flash the QR past it, tap the link. Allow the camera the first time.</li>
+      <li>Under the viewfinder, tap a symbol. A preview of it appears on the screen.</li>
+      <li>Drag it where you want it. Pinch to resize. Double-tap it to switch Glow / Shadow. The % chip sets how strong it is.</li>
+      <li>Press the shutter. The photo flies into the corner thumbnail; the symbol preview clears.</li>
+      <li><b>iPhone:</b> tap the corner thumbnail → the share sheet opens → tap <b>Save Image</b>. It goes into <b>Photos</b>, as the newest photo. Then swipe up to the home screen and open Photos.</li>
+      <li><b>Android:</b> it saves by itself at the shutter. Swipe back; it's in Gallery, in the <b>Download</b> album (Samsung: Albums → Download; Google Photos: Library → Download).</li>
+    </ol>
+    <p class="hint">Nothing is needed on your own phone. Add <code>?debug=1</code> to the link to see the saved photo right after the shot while testing.</p>
+  </main>
+  <script src="/vendor/qrcode.js"></script>
+  <script>
+    (() => {
+      const url = location.origin + "/a";
+      document.getElementById("urlText").textContent = url;
+      document.getElementById("open").href = "/a";
+      const qr = qrcode(0, "M");
+      qr.addData(url);
+      qr.make();
+      document.getElementById("qr").innerHTML = qr.createSvgTag({ cellSize: 8, margin: 0, scalable: true });
+      document.getElementById("download").addEventListener("click", () => {
+        const n = qr.getModuleCount(), cell = 24, margin = 4 * cell, size = n * cell + margin * 2;
+        const c = document.createElement("canvas");
+        c.width = c.height = size;
+        const g = c.getContext("2d");
+        g.fillStyle = "#fff"; g.fillRect(0, 0, size, size);
+        g.fillStyle = "#000";
+        for (let r = 0; r < n; r++) for (let k = 0; k < n; k++) if (qr.isDark(r, k)) g.fillRect(margin + k * cell, margin + r * cell, cell, cell);
+        const a = document.createElement("a");
+        a.href = c.toDataURL("image/png");
+        a.download = "aura-qr.png";
+        document.body.appendChild(a); a.click(); a.remove();
+      });
+    })();
+  </script>
+</body>
+</html>

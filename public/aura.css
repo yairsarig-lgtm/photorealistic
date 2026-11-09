@@ -61,6 +61,64 @@ html, body {
   padding: 10px 0 calc(26px + env(safe-area-inset-bottom));
   background: linear-gradient(to top, rgba(0,0,0,.6), rgba(0,0,0,0));
 }
+#tools {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 0 12px;
+  margin-bottom: 16px;
+}
+#symbols { display: flex; gap: 6px; }
+#symbols button, #chips button {
+  border: 0;
+  margin: 0;
+  color: rgba(255,255,255,.85);
+  background: rgba(255,255,255,.12);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+#symbols button {
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+}
+#symbols svg { width: 60%; height: 60%; fill: none; stroke: currentColor; stroke-width: 8; stroke-linecap: round; stroke-linejoin: round; }
+#symbols button.on { background: #ffd34d; color: #111; }
+#chips { display: flex; gap: 6px; }
+#chips button {
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 15px;
+  font: 600 12px/1 system-ui, sans-serif;
+}
+
+/* The live symbol preview, moved by dragging and sized by pinching. */
+#overlay {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 120px;
+  height: 120px;
+  overflow: visible;
+  touch-action: none;
+  z-index: 3;
+}
+#overlay[hidden] { display: none; }
+#overlay path {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 7.5;
+}
+/* The preview is a guide for the performer, so it stays readable on any
+   background; the saved photo uses the real, subtle blend. */
+#overlay.glow path { stroke: rgb(255, 236, 200); }
+#overlay.shadow path { stroke: rgb(25, 20, 40); }
+
 #modes {
   display: flex;
   justify-content: center;

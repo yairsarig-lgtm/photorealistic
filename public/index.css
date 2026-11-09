@@ -25,6 +25,9 @@ a.button {
   font: 600 17px/1 system-ui, sans-serif;
 }
 a.button.primary { background: var(--accent); color: #111; }
+a.button.secondary-link { border: 1px solid var(--line); color: var(--fg); margin-top: 14px; }
+ol.notes li { margin: 8px 0; }
+code { font: 13px ui-monospace, Menlo, monospace; color: var(--fg); }
 
 .row { display: flex; gap: 8px; margin-top: 14px; }
 .row input {

@@ -8,7 +8,7 @@
 <meta name="robots" content="noindex, nofollow">
 <meta name="referrer" content="no-referrer">
 <title>Camera</title>
-<link rel="stylesheet" href="/aura.css">
+<link rel="stylesheet" href="/aura.css?v=3">
 </head>
 <body>
   <video id="cam" playsinline muted autoplay></video>
@@ -21,8 +21,25 @@
 
   <div id="focus"></div>
 
+  <!-- Live preview of the symbol: only the performer sees the screen. -->
+  <svg id="overlay" viewBox="-50 -50 100 100" hidden><path id="overlayPath"/></svg>
+
   <div id="bottom">
-    <div id="modes"><span>VIDEO</span><span class="on">PHOTO</span><span>PORTRAIT</span></div>
+    <!-- Performer controls, styled like a camera's filter strip. -->
+    <div id="tools">
+      <div id="symbols">
+        <button data-v="none" class="on" aria-label="No symbol"><svg viewBox="-50 -50 100 100"><path d="M-30-30 30 30"/></svg></button>
+        <button data-v="circle" aria-label="Circle"><svg viewBox="-50 -50 100 100"><circle r="38"/></svg></button>
+        <button data-v="cross" aria-label="Cross"><svg viewBox="-50 -50 100 100"><path d="M0-40V40M-40 0H40"/></svg></button>
+        <button data-v="waves" aria-label="Waves"><svg viewBox="-50 -50 100 100"><path d="M-40-24q10-13 20 0t20 0 20 0 20 0M-40 0q10-13 20 0t20 0 20 0 20 0M-40 24q10-13 20 0t20 0 20 0 20 0"/></svg></button>
+        <button data-v="square" aria-label="Square"><svg viewBox="-50 -50 100 100"><rect x="-34" y="-34" width="68" height="68"/></svg></button>
+        <button data-v="star" aria-label="Star"><svg viewBox="-50 -50 100 100"><path d="M0-38 22.3 34.6-36.1-8H36.1L-22.3 34.6Z"/></svg></button>
+      </div>
+      <div id="chips">
+        <button id="styleChip">Glow</button>
+        <button id="strengthChip">50%</button>
+      </div>
+    </div>
     <div id="controls">
       <div id="thumb"><img id="thumbImg" alt=""></div>
       <button id="shutter" aria-label="Take photo"><span></span></button>
@@ -35,6 +52,6 @@
   <div id="preview" hidden><img id="previewImg" alt=""><p>debug preview: tap to close</p></div>
   <div id="debug" hidden></div>
 
-  <script src="/aura.js"></script>
+  <script src="/aura.js?v=4"></script>
 </body>
 </html>

@@ -47,6 +47,14 @@ export default {
       const cfg = await stub.getConfig();
       return servePage(env, request, cfg.routine === "aura" ? "/aura.html" : "/spectator.html");
     }
+    // Aura setup page (performer): its QR and instructions.
+    if (parts.length === 1 && parts[0] === "aura") {
+      return servePage(env, request, "/aura-setup.html");
+    }
+    // Aura's own QR: a stand-alone fake camera, no receiver needed.
+    if (parts[0] === "a" && (parts.length === 1 || (parts.length === 2 && CODE_RE.test(parts[1])))) {
+      return servePage(env, request, "/aura.html");
+    }
     if (parts.length === 2 && parts[0] === "r" && CODE_RE.test(parts[1])) {
       return servePage(env, request, "/receiver.html");
     }
@@ -58,7 +66,10 @@ export default {
     if (url.pathname.endsWith(".html")) return new Response("Not found", { status: 404 });
     const res = await env.ASSETS.fetch(request);
     if (res.status === 404) return new Response("Not found", { status: 404 });
-    return res;
+    // Always check for a newer script/style, so phones pick up updates at once.
+    const out = new Response(res.body, res);
+    out.headers.set("Cache-Control", "no-cache");
+    return out;
   },
 } satisfies ExportedHandler<Env>;
 

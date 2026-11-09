@@ -2,9 +2,9 @@
 // spectator's phone. Nothing is needed on the performer's phone.
 //
 //   1. Pick screen: the performer taps the symbol (or it comes from ?s=star).
-//   2. Camera: the symbol preview is on the viewfinder. One finger drags it,
-//      a pinch resizes it, a double-tap switches glow/shadow, tapping the
-//      viewfinder moves it there.
+//   2. Camera: the symbol preview is on the viewfinder. Anywhere on screen:
+//      one finger drags it, two fingers move + resize + rotate it together,
+//      a quick tap makes it jump there.
 //   3. Shutter: in the same tap, the photo (with the symbol blended in, named
 //      and dated like a camera photo) is saved. iPhone: the share sheet opens
 //      → "Save Image" → Photos. Android: it downloads straight away.
@@ -41,6 +41,7 @@
     x: innerWidth / 2,
     y: innerHeight * 0.32,
     size: Math.min(innerWidth, innerHeight) * 0.32,
+    rot: 0,
   };
   let device = { make: "", model: "" };
   let shots = 0;
@@ -168,14 +169,20 @@
   };
 
   // ---------- the live preview ----------
+  let frame = 0;
   function renderOverlay() {
+    cancelAnimationFrame(frame);
+    frame = requestAnimationFrame(drawOverlay);
+  }
+  function drawOverlay() {
     if (!sym.shape) { overlay.setAttribute("hidden", ""); return; }
     overlay.removeAttribute("hidden");
     overlayPath.setAttribute("d", PATHS[sym.shape]);
     overlay.classList.toggle("glow", sym.style === "glow");
     overlay.classList.toggle("shadow", sym.style === "shadow");
     overlay.style.width = overlay.style.height = sym.size + "px";
-    overlay.style.transform = `translate(${sym.x - sym.size / 2}px, ${sym.y - sym.size / 2}px)`;
+    overlay.style.transform =
+      `translate(${sym.x - sym.size / 2}px, ${sym.y - sym.size / 2}px) rotate(${sym.rot}rad)`;
     const edge = sym.style === "glow" ? "rgba(0,0,0,.55)" : "rgba(255,255,255,.6)";
     const glow = sym.style === "glow" ? "rgba(255,220,160,.9)" : "rgba(20,18,30,.7)";
     overlay.style.filter =
@@ -197,74 +204,80 @@
     renderOverlay();
   });
 
-  // One finger drags. Two fingers only resize (the symbol stays where it is).
-  // Double-tap switches glow/shadow.
+  // ---------- gestures, anywhere on the viewfinder ----------
+  // One finger: drag the symbol. Two fingers: move, resize and rotate it
+  // together, as if it were pinned under the fingers. A quick tap: the
+  // symbol jumps there (it looks like tap-to-focus).
   const pointers = new Map();
-  let gesture = null;
-  let lastTap = 0;
+  let g = null;      // gesture start state
+  let tap = null;    // possible tap
 
-  function startGesture() {
+  function snapshot() {
     const pts = [...pointers.values()];
-    if (!pts.length) { gesture = null; return; }
-    gesture = { n: pts.length, sx: sym.x, sy: sym.y, size: sym.size, p0: pts[0] };
-    if (pts.length >= 2) gesture.d0 = Math.max(10, Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y));
+    if (!pts.length) { g = null; return; }
+    g = { n: pts.length, x: sym.x, y: sym.y, size: sym.size, rot: sym.rot };
+    if (pts.length === 1) {
+      g.p = { ...pts[0] };
+    } else {
+      const [a, b] = pts;
+      g.m = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+      g.d = Math.max(8, Math.hypot(b.x - a.x, b.y - a.y));
+      g.a = Math.atan2(b.y - a.y, b.x - a.x);
+    }
   }
 
-  overlay.addEventListener("pointerdown", (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    overlay.setPointerCapture(e.pointerId);
-    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    tapStart = pointers.size === 1 ? { t: performance.now(), x: e.clientX, y: e.clientY } : null;
-    startGesture();
-  });
-  function onMove(e) {
-    if (!pointers.has(e.pointerId) || !gesture) return;
-    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  function apply() {
     const pts = [...pointers.values()];
-    if (pts.length === 1 && gesture.n === 1) {
-      sym.x = gesture.sx + (pts[0].x - gesture.p0.x);
-      sym.y = gesture.sy + (pts[0].y - gesture.p0.y);
-    } else if (pts.length >= 2 && gesture.n >= 2) {
-      const d = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
-      const m = Math.min(innerWidth, innerHeight);
-      sym.size = Math.max(m * 0.1, Math.min(m * 0.95, gesture.size * (d / gesture.d0)));
+    if (!g || !pts.length) return;
+    if (g.n === 1) {
+      sym.x = g.x + (pts[0].x - g.p.x);
+      sym.y = g.y + (pts[0].y - g.p.y);
+    } else if (pts.length >= 2) {
+      const [a, b] = pts;
+      const m = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+      const k = Math.hypot(b.x - a.x, b.y - a.y) / g.d;
+      const da = Math.atan2(b.y - a.y, b.x - a.x) - g.a;
+      const lim = Math.min(innerWidth, innerHeight);
+      const size = Math.max(lim * 0.08, Math.min(lim * 1.2, g.size * k));
+      // It turns and grows around its own centre, and slides with the
+      // fingers, so it never swings away when the fingers are elsewhere.
+      sym.x = g.x + (m.x - g.m.x);
+      sym.y = g.y + (m.y - g.m.y);
+      sym.size = size;
+      sym.rot = g.rot + da;
     }
     renderOverlay();
   }
-  overlay.addEventListener("pointermove", onMove);
-  const endPointer = (e) => { pointers.delete(e.pointerId); startGesture(); };
-  // A double-tap is two quick taps that don't move: drags and pinches never count.
-  let tapStart = null;
-  overlay.addEventListener("pointerup", (e) => {
-    const t = tapStart;
-    tapStart = null;
-    if (t && pointers.size === 1 && performance.now() - t.t < 250 &&
-        Math.hypot(e.clientX - t.x, e.clientY - t.y) < 10) {
-      const now = performance.now();
-      if (now - lastTap < 350) { setStyle(sym.style === "glow" ? "shadow" : "glow"); lastTap = 0; }
-      else lastTap = now;
-    } else {
-      lastTap = 0;
-    }
-  });
-  overlay.addEventListener("pointerup", endPointer);
-  overlay.addEventListener("pointercancel", endPointer);
 
-  // A pinch whose second finger lands on the viewfinder (not on the symbol)
-  // still resizes: track it there too.
-  cam.addEventListener("pointerdown", (e) => {
-    if (pointers.size >= 1) {
-      tapStart = null;
-      lastTap = 0;
-      cam.setPointerCapture(e.pointerId);
-      pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-      startGesture();
-      return;
+  camView.addEventListener("pointerdown", (e) => {
+    if (e.target.closest("#bottom")) return;
+    e.preventDefault();
+    try { camView.setPointerCapture(e.pointerId); } catch (_) {}
+    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    tap = pointers.size === 1 ? { t: performance.now(), x: e.clientX, y: e.clientY, id: e.pointerId } : null;
+    snapshot();
+  });
+  camView.addEventListener("pointermove", (e) => {
+    if (!pointers.has(e.pointerId)) return;
+    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (tap && Math.hypot(e.clientX - tap.x, e.clientY - tap.y) > 10) tap = null;
+    apply();
+  });
+  const lift = (e) => {
+    if (!pointers.has(e.pointerId)) return;
+    pointers.delete(e.pointerId);
+    if (tap && tap.id === e.pointerId && !pointers.size && performance.now() - tap.t < 300) {
+      jumpTo(tap.x, tap.y);
     }
-    // Otherwise: tap-to-focus, and the symbol jumps there.
-    focusEl.style.left = e.clientX + "px";
-    focusEl.style.top = e.clientY + "px";
+    tap = null;
+    snapshot(); // a finger lifted: carry on smoothly with the remaining one(s)
+  };
+  camView.addEventListener("pointerup", lift);
+  camView.addEventListener("pointercancel", lift);
+
+  function jumpTo(x, y) {
+    focusEl.style.left = x + "px";
+    focusEl.style.top = y + "px";
     focusEl.animate(
       [
         { opacity: 0, transform: "scale(1.4)" },
@@ -274,22 +287,20 @@
       ],
       { duration: 1100, easing: "ease-out" }
     );
-    sym.x = e.clientX;
-    sym.y = e.clientY;
+    sym.x = x;
+    sym.y = y;
     renderOverlay();
-  });
-  cam.addEventListener("pointermove", onMove);
-  cam.addEventListener("pointerup", endPointer);
-  cam.addEventListener("pointercancel", endPointer);
+  }
 
   // ---------- drawing the symbol into the photo ----------
-  function softStroke(ctx, shape, cx, cy, scale, lineW, color, blur) {
+  function softStroke(ctx, shape, cx, cy, scale, lineW, color, blur, rot = 0) {
     const off = ctx.canvas.width * 3;
     ctx.save();
     ctx.shadowColor = color;
     ctx.shadowBlur = blur;
     ctx.shadowOffsetX = off;
     ctx.translate(cx - off, cy);
+    ctx.rotate(rot);
     ctx.scale(scale, scale);
     ctx.lineWidth = lineW / scale;
     ctx.lineCap = "round";
@@ -320,14 +331,14 @@
     const fy = (sym.y - (H - dh) / 2) / dh;
     if (facing === "user") fx = 1 - fx;
     const k = canvas.width / vw;
-    return { cx: fx * canvas.width, cy: fy * canvas.height, box: (sym.size / s) * k };
+    return { cx: fx * canvas.width, cy: fy * canvas.height, box: (sym.size / s) * k, rot: facing === "user" ? -sym.rot : sym.rot };
   }
 
   function addSymbol(canvas) {
     if (!sym.shape) return;
     const W = canvas.width, H = canvas.height;
     const ctx = canvas.getContext("2d");
-    const { cx, cy, box } = overlayInPhoto(canvas);
+    const { cx, cy, box, rot } = overlayInPhoto(canvas);
     const scale = box / 100;
     const lw = 7.5 * scale;
     const k = sym.strength;
@@ -339,16 +350,16 @@
 
     if (sym.style === "shadow") {
       const a = (0.25 + 0.45 * light) * k * 1.4;
-      softStroke(lg, sym.shape, cx, cy, scale, lw * 1.6, `rgba(20,18,30,${Math.min(1, a * 0.6)})`, box * 0.08);
-      softStroke(lg, sym.shape, cx, cy, scale, lw, `rgba(15,12,25,${Math.min(1, a)})`, box * 0.025);
+      softStroke(lg, sym.shape, cx, cy, scale, lw * 1.6, `rgba(20,18,30,${Math.min(1, a * 0.6)})`, box * 0.08, rot);
+      softStroke(lg, sym.shape, cx, cy, scale, lw, `rgba(15,12,25,${Math.min(1, a)})`, box * 0.025, rot);
       ctx.save();
       ctx.globalCompositeOperation = "multiply";
       ctx.drawImage(layer, 0, 0);
       ctx.restore();
     } else {
       const a = (0.35 + 0.5 * (1 - light)) * k * 1.4;
-      softStroke(lg, sym.shape, cx, cy, scale, lw * 2.4, `rgba(255,226,180,${Math.min(1, a * 0.55)})`, box * 0.11);
-      softStroke(lg, sym.shape, cx, cy, scale, lw, `rgba(255,244,225,${Math.min(1, a)})`, box * 0.03);
+      softStroke(lg, sym.shape, cx, cy, scale, lw * 2.4, `rgba(255,226,180,${Math.min(1, a * 0.55)})`, box * 0.11, rot);
+      softStroke(lg, sym.shape, cx, cy, scale, lw, `rgba(255,244,225,${Math.min(1, a)})`, box * 0.03, rot);
       ctx.save();
       ctx.globalCompositeOperation = "screen";
       ctx.drawImage(layer, 0, 0);

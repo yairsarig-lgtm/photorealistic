@@ -55,6 +55,7 @@ html, body {
 #cam.mirror { transform: scaleX(-1); }
 
 #bottom {
+  z-index: 5;
   position: fixed;
   left: 0;
   right: 0;
@@ -117,7 +118,8 @@ html, body {
   width: 120px;
   height: 120px;
   overflow: visible;
-  touch-action: none;
+  pointer-events: none;
+  transform-origin: 50% 50%;
   z-index: 3;
 }
 #overlay path { fill: none; stroke-linecap: round; stroke-linejoin: round; stroke-width: 7.5; }
@@ -169,3 +171,5 @@ html, body {
   max-width: 80vw;
   white-space: pre-wrap;
 }
+
+#camView { position: fixed; inset: 0; touch-action: none; }

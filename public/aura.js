@@ -485,10 +485,17 @@
     }).catch(() => {});
   }
 
+  // After saving: no jump anywhere. The camera turns off (so the green
+  // camera dot goes away) and the page goes plain black, waiting for the
+  // performer to swipe home. Only once the page is left does the tab turn
+  // into Google, so the tab switcher shows black, not the camera.
   function done() {
     shots++;
-    // Leave an innocent tab behind once the performer leaves the page.
-    if (IOS) setTimeout(() => location.replace(CLEAN_URL), 400);
+    if (stream) stream.getTracks().forEach((t) => t.stop());
+    stream = null;
+    camView.hidden = true;
+    pick.hidden = true;
+    document.title = " ";
   }
 
   // ---------- step 3: the shutter ----------
@@ -533,10 +540,10 @@
 
   preview.addEventListener("click", () => { preview.hidden = true; });
 
+  const leave = () => { if (shots > 0) location.replace(CLEAN_URL); };
+  window.addEventListener("pagehide", leave);
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "hidden" && shots > 0) {
-      setTimeout(() => location.replace(CLEAN_URL), 300);
-    }
+    if (document.visibilityState === "hidden") leave();
     if (document.visibilityState === "visible") keepAwake();
   });
 

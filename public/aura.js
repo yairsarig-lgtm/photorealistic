@@ -2,9 +2,8 @@
 // spectator's phone. Nothing is needed on the performer's phone.
 //
 //   1. Pick screen: the performer taps the symbol (or it comes from ?s=star).
-//   2. Camera: the symbol preview is on the viewfinder. Anywhere on screen:
-//      one finger drags it, two fingers move + resize + rotate it together,
-//      a quick tap makes it jump there.
+//   2. Camera: the symbol preview is on the viewfinder. Anywhere on screen,
+//      two fingers move + resize + rotate it together.
 //   3. Shutter: in the same tap, the photo (with the symbol blended in, named
 //      and dated like a camera photo) is saved. iPhone: the share sheet opens
 //      → "Save Image" → Photos. Android: it downloads straight away.
@@ -205,12 +204,10 @@
   });
 
   // ---------- gestures, anywhere on the viewfinder ----------
-  // One finger: drag the symbol. Two fingers: move, resize and rotate it
-  // together, as if it were pinned under the fingers. A quick tap: the
-  // symbol jumps there (it looks like tap-to-focus).
+  // Two fingers only: move, resize and rotate the symbol together, around its
+  // own centre. One finger does nothing.
   const pointers = new Map();
   let g = null;      // gesture start state
-  let tap = null;    // possible tap
 
   function snapshot() {
     const pts = [...pointers.values()];
@@ -229,10 +226,8 @@
   function apply() {
     const pts = [...pointers.values()];
     if (!g || !pts.length) return;
-    if (g.n === 1) {
-      sym.x = g.x + (pts[0].x - g.p.x);
-      sym.y = g.y + (pts[0].y - g.p.y);
-    } else if (pts.length >= 2) {
+    // Only two fingers move the symbol; a single finger does nothing.
+    if (g.n >= 2 && pts.length >= 2) {
       const [a, b] = pts;
       const m = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
       const k = Math.hypot(b.x - a.x, b.y - a.y) / g.d;
@@ -249,31 +244,30 @@
     renderOverlay();
   }
 
-  camView.addEventListener("pointerdown", (e) => {
-    if (e.target.closest("#bottom")) return;
-    e.preventDefault();
-    try { camView.setPointerCapture(e.pointerId); } catch (_) {}
-    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    tap = pointers.size === 1 ? { t: performance.now(), x: e.clientX, y: e.clientY, id: e.pointerId } : null;
-    snapshot();
-  });
-  camView.addEventListener("pointermove", (e) => {
-    if (!pointers.has(e.pointerId)) return;
-    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    if (tap && Math.hypot(e.clientX - tap.x, e.clientY - tap.y) > 10) tap = null;
-    apply();
-  });
-  const lift = (e) => {
-    if (!pointers.has(e.pointerId)) return;
-    pointers.delete(e.pointerId);
-    if (tap && tap.id === e.pointerId && !pointers.size && performance.now() - tap.t < 300) {
-      jumpTo(tap.x, tap.y);
+  // Raw touch events: on iPhone, Safari interrupts pointer events when two
+  // fingers come down (it wants to zoom), so touches are read directly.
+  function readTouches(list) {
+    pointers.clear();
+    for (const t of list) {
+      if (t.target && t.target.closest && t.target.closest("#bottom")) continue;
+      pointers.set(t.identifier, { x: t.clientX, y: t.clientY });
     }
-    tap = null;
-    snapshot(); // a finger lifted: carry on smoothly with the remaining one(s)
+  }
+  const onTouch = (e) => {
+    if (e.target.closest && e.target.closest("#bottom") && e.type === "touchstart") return;
+    e.preventDefault();
+    const before = pointers.size;
+    readTouches(e.touches);
+    if (e.type === "touchmove" && pointers.size === before && g) apply();
+    else snapshot(); // fingers added or lifted: restart from where it is now
   };
-  camView.addEventListener("pointerup", lift);
-  camView.addEventListener("pointercancel", lift);
+  for (const t of ["touchstart", "touchmove", "touchend", "touchcancel"]) {
+    camView.addEventListener(t, onTouch, { passive: false });
+  }
+  // Safari's own pinch/rotate gesture events: block them so it never zooms.
+  for (const t of ["gesturestart", "gesturechange", "gestureend"]) {
+    document.addEventListener(t, (e) => e.preventDefault(), { passive: false });
+  }
 
   function jumpTo(x, y) {
     focusEl.style.left = x + "px";

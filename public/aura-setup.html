@@ -31,14 +31,14 @@
       <li><b>iPhone:</b> press the shutter — the share sheet opens at once → tap <b>Save Image</b>. It's in <b>Photos</b>, as the newest photo. Swipe up to the home screen, open Photos, hand it over.</li>
       <li><b>Android:</b> the shutter saves it straight away. It's in Gallery, in the <b>Download</b> album (Samsung: Albums → Download).</li>
     </ol>
-    <p class="hint">Nothing is needed on your own phone. Add <code>?debug=1</code> to the link to see the saved photo right after the shot while testing.</p>
+    <p class="hint">Nothing is needed on your own phone. Each phone gets one use: after a photo is saved, opening the page again on that phone (from history or a suggestion) goes straight to Google. To test again on your own phone, open <code>/a?reset=1</code>.</p>
   </main>
   <script src="/vendor/qrcode.js"></script>
   <script>
     (() => {
       const url = location.origin + "/a";
       document.getElementById("urlText").textContent = url;
-      document.getElementById("open").href = "/a";
+      document.getElementById("open").href = "/a?reset=1";
       const qr = qrcode(0, "M");
       qr.addData(url);
       qr.make();

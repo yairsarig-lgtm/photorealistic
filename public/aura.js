@@ -485,17 +485,15 @@
     }).catch(() => {});
   }
 
-  // After saving: no jump anywhere. The camera turns off (so the green
-  // camera dot goes away) and the page goes plain black, waiting for the
-  // performer to swipe home. Only once the page is left does the tab turn
-  // into Google, so the tab switcher shows black, not the camera.
+  // After saving: mark this phone as used (so the page never shows again
+  // from history or a suggestion) and turn the tab into Google.
   function done() {
     shots++;
+    try { localStorage.setItem("aura-used", String(Date.now())); } catch (_) {}
     if (stream) stream.getTracks().forEach((t) => t.stop());
     stream = null;
     camView.hidden = true;
-    pick.hidden = true;
-    document.title = " ";
+    setTimeout(() => location.replace(CLEAN_URL), IOS ? 300 : 1200);
   }
 
   // ---------- step 3: the shutter ----------

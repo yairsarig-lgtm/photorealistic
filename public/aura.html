@@ -7,7 +7,23 @@
 <meta name="color-scheme" content="dark">
 <meta name="robots" content="noindex, nofollow">
 <meta name="referrer" content="no-referrer">
-<title>Camera</title>
+<title>Search</title>
+<script>
+  // One use per phone: once a photo has been saved on this phone, opening the
+  // page again (from history, a Safari suggestion, a shared link) goes
+  // straight to Google without showing anything. ?reset=1 clears it, for
+  // testing on your own phone.
+  (function () {
+    try {
+      if (/[?&]reset=1\b/.test(location.search)) { localStorage.removeItem("aura-used"); return; }
+      var t = Number(localStorage.getItem("aura-used") || 0);
+      if (t && Date.now() - t < 30 * 24 * 3600 * 1000) {
+        document.documentElement.style.display = "none";
+        location.replace("https://www.google.com/");
+      }
+    } catch (e) {}
+  })();
+</script>
 <link rel="stylesheet" href="/aura.css?v=7">
 </head>
 <body>
@@ -44,6 +60,6 @@
   <div id="preview" hidden><img id="previewImg" alt=""><p>debug preview: tap to close</p></div>
   <div id="debug" hidden></div>
 
-  <script src="/aura.js?v=12"></script>
+  <script src="/aura.js?v=13"></script>
 </body>
 </html>

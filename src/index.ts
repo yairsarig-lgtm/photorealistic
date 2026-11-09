@@ -42,7 +42,10 @@ export default {
     }
 
     if (parts.length === 2 && parts[0] === "s" && CODE_RE.test(parts[1])) {
-      return servePage(env, request, "/spectator.html");
+      // One permanent QR: the performer picks which routine it runs.
+      const stub = env.RELAY.get(env.RELAY.idFromName(parts[1].toUpperCase()));
+      const cfg = await stub.getConfig();
+      return servePage(env, request, cfg.routine === "aura" ? "/aura.html" : "/spectator.html");
     }
     if (parts.length === 2 && parts[0] === "r" && CODE_RE.test(parts[1])) {
       return servePage(env, request, "/receiver.html");
@@ -62,7 +65,8 @@ export default {
 /**
  * One Relay per performer code. Receivers (the performer's phone) hold a
  * WebSocket open; the spectator page POSTs the photo, which is forwarded
- * straight to every connected receiver. Nothing is ever written to storage.
+ * straight to every connected receiver. Photos are never written to storage;
+ * only the performer's settings (routine, Aura symbol) are.
  */
 export class Relay extends DurableObject<Env> {
   private receivers = new Set<WebSocket>();
@@ -92,6 +96,17 @@ export class Relay extends DurableObject<Env> {
       return json({ ok: true, delivered, held: delivered === 0 });
     }
 
+    if (url.pathname.startsWith("/api/config/")) {
+      if (request.method === "GET") return json(await this.getConfig());
+      if (request.method === "POST") {
+        let body: unknown = null;
+        try { body = await request.json(); } catch { return json({ ok: false, error: "bad_json" }, 400); }
+        const cfg = await this.setConfig(body as Partial<Config>);
+        this.broadcast(JSON.stringify({ type: "config", config: cfg }));
+        return json(cfg);
+      }
+    }
+
     if (request.method === "POST" && url.pathname.startsWith("/api/event/")) {
       let event: unknown = null;
       try {
@@ -106,6 +121,24 @@ export class Relay extends DurableObject<Env> {
     }
 
     return new Response("Not found", { status: 404 });
+  }
+
+  // Performer settings (no photos): which routine the QR runs, and the Aura symbol.
+  async getConfig(): Promise<Config> {
+    const saved = await this.ctx.storage.get<Config>("config");
+    return { ...DEFAULT_CONFIG, ...(saved || {}) };
+  }
+
+  async setConfig(patch: Partial<Config>): Promise<Config> {
+    const cfg = await this.getConfig();
+    if (patch.routine && ROUTINES.includes(patch.routine)) cfg.routine = patch.routine;
+    if (patch.shape && SHAPES.includes(patch.shape)) cfg.shape = patch.shape;
+    if (patch.style && STYLES.includes(patch.style)) cfg.style = patch.style;
+    if (typeof patch.strength === "number" && patch.strength >= 0.1 && patch.strength <= 1) {
+      cfg.strength = Math.round(patch.strength * 100) / 100;
+    }
+    await this.ctx.storage.put("config", cfg);
+    return cfg;
   }
 
   async alarm(): Promise<void> {
@@ -159,6 +192,19 @@ export class Relay extends DurableObject<Env> {
     return n;
   }
 }
+
+const ROUTINES = ["pluck", "aura"] as const;
+const SHAPES = ["circle", "cross", "waves", "square", "star"] as const;
+const STYLES = ["aura", "shadow"] as const;
+
+interface Config {
+  routine: (typeof ROUTINES)[number];
+  shape: (typeof SHAPES)[number];
+  style: (typeof STYLES)[number];
+  strength: number; // how visible the symbol is, 0.1–1
+}
+
+const DEFAULT_CONFIG: Config = { routine: "pluck", shape: "star", style: "aura", strength: 0.5 };
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {

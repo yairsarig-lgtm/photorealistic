@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<meta name="color-scheme" content="dark">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>Camera</title>
+<link rel="stylesheet" href="/aura.css">
+</head>
+<body>
+  <video id="cam" playsinline muted autoplay></video>
+
+  <div id="topbar">
+    <span class="icon flash"></span>
+    <span class="icon ratio">3:4</span>
+    <span class="icon gear"></span>
+  </div>
+
+  <div id="focus"></div>
+
+  <div id="bottom">
+    <div id="modes"><span>VIDEO</span><span class="on">PHOTO</span><span>PORTRAIT</span></div>
+    <div id="controls">
+      <div id="thumb"><img id="thumbImg" alt=""></div>
+      <button id="shutter" aria-label="Take photo"><span></span></button>
+      <button id="flip" aria-label="Switch camera"></button>
+    </div>
+  </div>
+
+  <div id="flash"></div>
+  <img id="fly" alt="">
+  <div id="preview" hidden><img id="previewImg" alt=""><p>debug preview: tap to close</p></div>
+  <div id="debug" hidden></div>
+
+  <script src="/aura.js"></script>
+</body>
+</html>

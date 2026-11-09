@@ -47,6 +47,10 @@
         if (msg.type === "event" && msg.event === "vanished") {
           dot.classList.add("gone");
           buzz([30, 70, 30]);
+        } else if (msg.type === "config") {
+          showConfig(msg.config);
+        } else if (msg.type === "event" && msg.event === "aura-saved") {
+          buzz([20, 50, 20, 50, 20]);
         } else if (msg.type === "event" && msg.event.startsWith("exit-")) {
           const left = msg.event === "exit-left";
           exitEl.textContent = left
@@ -196,6 +200,48 @@
   });
   ["pointerup", "pointercancel", "pointerleave"].forEach((t) =>
     corner.addEventListener(t, () => clearTimeout(holdTimer)));
+
+  // ---------- routine + Aura settings ----------
+  const strengthEl = $("strength"), strengthVal = $("strengthVal");
+
+  function showConfig(cfg) {
+    if (!cfg) return;
+    for (const [id, key] of [["routine", "routine"], ["shape", "shape"], ["style", "style"]]) {
+      document.querySelectorAll(`#${id} button`).forEach((b) => b.classList.toggle("on", b.dataset.v === cfg[key]));
+    }
+    $("auraControls").hidden = cfg.routine !== "aura";
+    if (document.activeElement !== strengthEl) strengthEl.value = cfg.strength;
+    strengthVal.textContent = Math.round(cfg.strength * 100) + "%";
+  }
+
+  async function setConfig(patch) {
+    try {
+      const r = await fetch("/api/config/" + encodeURIComponent(code), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patch),
+      });
+      if (r.ok) showConfig(await r.json());
+    } catch (_) {}
+  }
+
+  for (const [id, key] of [["routine", "routine"], ["shape", "shape"], ["style", "style"]]) {
+    document.querySelectorAll(`#${id} button`).forEach((b) =>
+      b.addEventListener("click", () => {
+        buzz(15);
+        // Show it at once, then confirm with the server.
+        document.querySelectorAll(`#${id} button`).forEach((x) => x.classList.toggle("on", x === b));
+        if (key === "routine") $("auraControls").hidden = b.dataset.v !== "aura";
+        setConfig({ [key]: b.dataset.v });
+      }));
+  }
+  strengthEl.addEventListener("input", () => { strengthVal.textContent = Math.round(strengthEl.value * 100) + "%"; });
+  strengthEl.addEventListener("change", () => setConfig({ strength: Number(strengthEl.value) }));
+
+  if (/^[A-Z0-9]{6,16}$/.test(code)) {
+    fetch("/api/config/" + encodeURIComponent(code), { cache: "no-store" })
+      .then((r) => r.json()).then(showConfig).catch(() => {});
+  }
 
   // ---------- buttons ----------
   $("arm").addEventListener("click", arm);

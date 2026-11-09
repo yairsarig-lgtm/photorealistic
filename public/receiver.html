@@ -18,6 +18,35 @@
     <p class="status"><span id="photoState" class="pill dim">No photo yet</span></p>
     <p class="status"><span id="exitState" class="pill dim" hidden></span></p>
 
+    <section class="panel">
+      <p class="label">Your QR runs</p>
+      <div class="seg" id="routine">
+        <button data-v="pluck">Pluck</button>
+        <button data-v="aura">Aura</button>
+      </div>
+
+      <div id="auraControls">
+        <p class="label">Symbol in the photo</p>
+        <div class="shapes" id="shape">
+          <button data-v="circle" aria-label="Circle"><svg viewBox="-50 -50 100 100"><circle r="40"/></svg></button>
+          <button data-v="cross" aria-label="Cross"><svg viewBox="-50 -50 100 100"><path d="M0-42V42M-42 0H42"/></svg></button>
+          <button data-v="waves" aria-label="Waves"><svg viewBox="-50 -50 100 100"><path d="M-42-26q10.5-14 21 0t21 0 21 0 21 0M-42 0q10.5-14 21 0t21 0 21 0 21 0M-42 26q10.5-14 21 0t21 0 21 0 21 0"/></svg></button>
+          <button data-v="square" aria-label="Square"><svg viewBox="-50 -50 100 100"><rect x="-36" y="-36" width="72" height="72"/></svg></button>
+          <button data-v="star" aria-label="Star"><svg viewBox="-50 -50 100 100"><path d="M0-40 23.5 36.4-38-8.4H38L-23.5 36.4Z"/></svg></button>
+        </div>
+
+        <p class="label">Look</p>
+        <div class="seg" id="style">
+          <button data-v="aura">Glow</button>
+          <button data-v="shadow">Shadow</button>
+        </div>
+
+        <p class="label">Strength <span id="strengthVal"></span></p>
+        <input id="strength" type="range" min="0.1" max="1" step="0.05">
+        <p class="hint">On their phone, tap the screen where the symbol should go (it looks like tap-to-focus), then press the shutter. You can change the symbol right up to the shutter.</p>
+      </div>
+    </section>
+
     <button id="arm" class="primary">Arm — go black</button>
     <button id="test" class="secondary">Send a test photo</button>
 

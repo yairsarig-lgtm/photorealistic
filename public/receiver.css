@@ -43,6 +43,7 @@ h1 {
 }
 .pill.ok { border-color: color-mix(in srgb, var(--ok) 50%, transparent); color: var(--ok); }
 .pill.dim { color: var(--muted); }
+.pill[hidden] { display: none; }
 
 button {
   display: block;
@@ -64,6 +65,25 @@ button.secondary { background: transparent; color: var(--fg); }
 }
 .notes li { margin: 6px 0; }
 .link { color: var(--accent); font-size: 15px; }
+
+/* ---- routine + Aura controls ---- */
+.panel { margin-top: 26px; padding-top: 6px; border-top: 1px solid var(--line); }
+.label { margin: 18px 0 8px; color: var(--muted); font-size: 13px; letter-spacing: .06em; text-transform: uppercase; }
+.seg { display: flex; gap: 8px; }
+.seg button, .shapes button {
+  margin: 0;
+  background: transparent;
+  color: var(--fg);
+  border: 1px solid var(--line);
+}
+.seg button { flex: 1; padding: 14px; }
+.seg button.on, .shapes button.on { background: var(--accent); color: #111; border-color: transparent; }
+.shapes { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.shapes button { padding: 10px 0; aspect-ratio: 1; display: grid; place-items: center; }
+.shapes svg { width: 70%; height: 70%; fill: none; stroke: currentColor; stroke-width: 7; stroke-linecap: round; stroke-linejoin: round; }
+#strength { width: 100%; accent-color: var(--accent); }
+.hint { color: var(--muted); font-size: 14px; margin: 12px 0 0; }
+#auraControls[hidden] { display: none; }
 
 /* ---- performance screen ---- */
 #stage {

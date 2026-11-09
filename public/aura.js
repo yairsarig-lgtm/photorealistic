@@ -18,12 +18,31 @@
   const CLEAN_URL = "https://www.google.com/";
   const STRENGTHS = [0.3, 0.5, 0.7, 0.9];
   const SHAPES = ["circle", "cross", "waves", "square", "star"];
+  // Sets of symbols. "vector" sets are drawn (glow/shadow); "image" sets use
+  // real photographed effects, multiplied onto the photo (white = no change).
+  const SETS = {
+    light: { type: "vector", shapes: SHAPES },
+    shadow: { type: "image", blend: "multiply", files: { star: "/sets/shadow/star.png" } },
+  };
+  let currentSet = SETS[params.get("set")] ? params.get("set") : "light";
+  const images = {};
+  function loadImage(url) {
+    if (!images[url]) {
+      images[url] = new Promise((res) => {
+        const im = new Image();
+        im.onload = () => res(im);
+        im.onerror = () => res(null);
+        im.src = url;
+      });
+    }
+    return images[url];
+  }
 
   const $ = (id) => document.getElementById(id);
   const pick = $("pick"), camView = $("camView");
   const cam = $("cam"), shutter = $("shutter"), flip = $("flip"), focusEl = $("focus");
   const flash = $("flash");
-  const overlay = $("overlay"), overlayPath = $("overlayPath");
+  const overlay = $("overlay"), overlayPath = $("overlayPath"), overlayImg = $("overlayImg");
   const styleChip = $("styleChip"), strengthChip = $("strengthChip");
   const preview = $("preview"), previewImg = $("previewImg"), debugEl = $("debug");
 
@@ -129,9 +148,29 @@
     startCamera();
   });
 
-  // ---------- step 1: pick the symbol ----------
-  function choose(shape) {
+  // ---------- step 1: pick the set and the symbol ----------
+  function showSet(name) {
+    currentSet = name;
+    const set = SETS[name];
+    document.querySelectorAll("#setTabs button").forEach((b) => b.classList.toggle("on", b.dataset.set === name));
+    document.querySelectorAll("#pickGrid button").forEach((b) => {
+      b.disabled = set.type === "image" ? !set.files[b.dataset.v] : false;
+    });
+    if (set.type === "image") Object.values(set.files).forEach(loadImage);
+  }
+  document.querySelectorAll("#setTabs button").forEach((b) =>
+    b.addEventListener("click", () => showSet(b.dataset.set)));
+
+  async function choose(shape) {
+    const set = SETS[currentSet];
     sym.shape = shape;
+    sym.image = null;
+    if (set.type === "image") {
+      sym.image = await loadImage(set.files[shape]);
+      if (!sym.image) return;
+      overlayImg.setAttribute("href", set.files[shape]);
+    }
+    styleChip.hidden = set.type === "image";
     pick.hidden = true;
     camView.hidden = false;
     if (navigator.vibrate) navigator.vibrate(10);
@@ -141,6 +180,7 @@
   }
   document.querySelectorAll("#pickGrid button").forEach((b) =>
     b.addEventListener("click", () => choose(b.dataset.v)));
+  showSet(currentSet);
 
   // ---------- the symbols ----------
   const PATHS = {
@@ -176,6 +216,15 @@
   function drawOverlay() {
     if (!sym.shape) { overlay.setAttribute("hidden", ""); return; }
     overlay.removeAttribute("hidden");
+    overlay.classList.toggle("image", !!sym.image);
+    if (sym.image) {
+      overlay.style.width = overlay.style.height = sym.size + "px";
+      overlay.style.transform =
+        `translate(${sym.x - sym.size / 2}px, ${sym.y - sym.size / 2}px) rotate(${sym.rot}rad)`;
+      overlay.style.filter = "none";
+      overlay.style.opacity = String(imageAlpha());
+      return;
+    }
     overlayPath.setAttribute("d", PATHS[sym.shape]);
     overlay.classList.toggle("glow", sym.style === "glow");
     overlay.classList.toggle("shadow", sym.style === "shadow");
@@ -337,8 +386,24 @@
     return { cx: fx * canvas.width, cy: fy * canvas.height, box: (sym.size / s) * k, rot: facing === "user" ? -sym.rot : sym.rot };
   }
 
+  // How strongly an image symbol is applied, from the % chip.
+  function imageAlpha() { return Math.min(1, 0.25 + sym.strength); }
+
+  function addImageSymbol(canvas) {
+    const ctx = canvas.getContext("2d");
+    const { cx, cy, box, rot } = overlayInPhoto(canvas);
+    ctx.save();
+    ctx.globalCompositeOperation = SETS[currentSet].blend || "multiply";
+    ctx.globalAlpha = imageAlpha();
+    ctx.translate(cx, cy);
+    ctx.rotate(rot);
+    ctx.drawImage(sym.image, -box / 2, -box / 2, box, box);
+    ctx.restore();
+  }
+
   function addSymbol(canvas) {
     if (!sym.shape) return;
+    if (sym.image) return addImageSymbol(canvas);
     const W = canvas.width, H = canvas.height;
     const ctx = canvas.getContext("2d");
     const { cx, cy, box, rot } = overlayInPhoto(canvas);
@@ -550,5 +615,5 @@
   detectDevice();
   startCamera(); // ask for the camera now, so it's ready by the time a symbol is picked
   const preset = params.get("s");
-  if (SHAPES.includes(preset)) choose(preset);
+  if (SHAPES.includes(preset) && (SETS[currentSet].type !== "image" || SETS[currentSet].files[preset])) choose(preset);
 })();

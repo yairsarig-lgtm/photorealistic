@@ -24,11 +24,15 @@
     } catch (e) {}
   })();
 </script>
-<link rel="stylesheet" href="/aura.css?v=7">
+<link rel="stylesheet" href="/aura.css?v=14">
 </head>
 <body>
   <!-- Step 1: pick the symbol (only the performer sees the screen). -->
   <main id="pick">
+    <div id="setTabs">
+      <button data-set="light" class="on">Light</button>
+      <button data-set="shadow">Shadows</button>
+    </div>
     <div id="pickGrid">
       <button data-v="circle" aria-label="Circle"><svg viewBox="-50 -50 100 100"><circle r="38"/></svg></button>
       <button data-v="cross" aria-label="Cross"><svg viewBox="-50 -50 100 100"><path d="M0-40V40M-40 0H40"/></svg></button>
@@ -42,7 +46,7 @@
   <section id="camView" hidden>
     <video id="cam" playsinline muted autoplay></video>
     <div id="focus"></div>
-    <svg id="overlay" viewBox="-50 -50 100 100" hidden><path id="overlayPath"/></svg>
+    <svg id="overlay" viewBox="-50 -50 100 100" hidden><path id="overlayPath"/><image id="overlayImg" x="-50" y="-50" width="100" height="100" preserveAspectRatio="none"/></svg>
 
     <div id="bottom">
       <div id="controls">
@@ -60,6 +64,6 @@
   <div id="preview" hidden><img id="previewImg" alt=""><p>debug preview: tap to close</p></div>
   <div id="debug" hidden></div>
 
-  <script src="/aura.js?v=13"></script>
+  <script src="/aura.js?v=14"></script>
 </body>
 </html>

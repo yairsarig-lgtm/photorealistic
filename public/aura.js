@@ -1,47 +1,49 @@
 // Aura — a stand-alone fake camera, opened from its own QR on the
 // spectator's phone. Nothing is needed on the performer's phone.
 //
-// The performer (holding the phone, screen facing them) picks a symbol from
-// the strip under the viewfinder. A live preview of it appears on the
-// viewfinder: drag it into place, pinch to resize, double-tap it to switch
-// glow/shadow. The shutter flashes and "files" the shot like a real camera,
-// and the photo saved to the phone has the symbol blended in, named and
-// dated like a camera photo.
+//   1. Pick screen: the performer taps the symbol (or it comes from ?s=star).
+//   2. Camera: the symbol preview is on the viewfinder. One finger drags it,
+//      a pinch resizes it, a double-tap switches glow/shadow, tapping the
+//      viewfinder moves it there.
+//   3. Shutter: in the same tap, the photo (with the symbol blended in, named
+//      and dated like a camera photo) is saved. iPhone: the share sheet opens
+//      → "Save Image" → Photos. Android: it downloads straight away.
 (() => {
   "use strict";
 
   const parts = location.pathname.split("/").filter(Boolean);
-  const code = parts[0] === "a" ? parts[1] || "" : parts[1] || "";
+  const code = parts[0] === "a" ? parts[1] || "" : "";
   const params = new URLSearchParams(location.search);
   const DEBUG = params.get("debug") === "1";
   const MAX_EDGE = 2400;
   const CLEAN_URL = "https://www.google.com/";
   const STRENGTHS = [0.3, 0.5, 0.7, 0.9];
+  const SHAPES = ["circle", "cross", "waves", "square", "star"];
 
   const $ = (id) => document.getElementById(id);
+  const pick = $("pick"), camView = $("camView");
   const cam = $("cam"), shutter = $("shutter"), flip = $("flip"), focusEl = $("focus");
-  const flash = $("flash"), fly = $("fly"), thumbImg = $("thumbImg");
+  const flash = $("flash");
   const overlay = $("overlay"), overlayPath = $("overlayPath");
   const styleChip = $("styleChip"), strengthChip = $("strengthChip");
   const preview = $("preview"), previewImg = $("previewImg"), debugEl = $("debug");
+
+  const IOS = /iPhone|iPad|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 
   let stream = null;
   let facing = "environment";
   // The symbol, in screen terms: centre (px) and size (px of the 100-unit box).
   const sym = {
-    shape: "none",
-    style: "glow",
+    shape: null,
+    style: params.get("look") === "shadow" ? "shadow" : "glow",
     strength: 0.5,
     x: innerWidth / 2,
     y: innerHeight * 0.32,
     size: Math.min(innerWidth, innerHeight) * 0.32,
   };
   let device = { make: "", model: "" };
-  const IOS = /iPhone|iPad|iPod/.test(navigator.userAgent) ||
-    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-  let pendingFile = null;
   let shots = 0;
-  let busy = false;
   let wakeLock = null;
 
   function log(...a) {
@@ -89,7 +91,7 @@
     else if (/pixel/i.test(model)) make = "Google";
     else if (/redmi|poco|xiaomi|^2\d{3}/i.test(model)) make = "Xiaomi";
     else if (/oneplus|^CPH|^NE2|^PJ/i.test(model)) make = "OnePlus";
-    else if (/iPhone/.test(navigator.userAgent)) { make = "Apple"; model = "iPhone"; }
+    else if (IOS) { make = "Apple"; model = "iPhone"; }
     device = { make, model };
     log("device", make, model);
   }
@@ -127,6 +129,19 @@
     startCamera();
   });
 
+  // ---------- step 1: pick the symbol ----------
+  function choose(shape) {
+    sym.shape = shape;
+    pick.hidden = true;
+    camView.hidden = false;
+    if (navigator.vibrate) navigator.vibrate(10);
+    renderOverlay();
+    if (!stream) startCamera();
+    cam.play().catch(() => {});
+  }
+  document.querySelectorAll("#pickGrid button").forEach((b) =>
+    b.addEventListener("click", () => choose(b.dataset.v)));
+
   // ---------- the symbols ----------
   const PATHS = {
     circle: "M38 0A38 38 0 1 1-38 0A38 38 0 1 1 38 0Z",
@@ -137,9 +152,7 @@
       for (const yy of [-26, 0, 26]) {
         for (let i = 0; i <= 48; i++) {
           const t = i / 48;
-          const x = -42 + t * 84;
-          const y = yy + Math.sin(t * Math.PI * 4) * 6.5;
-          d += (i === 0 ? "M" : "L") + x.toFixed(2) + " " + y.toFixed(2);
+          d += (i === 0 ? "M" : "L") + (-42 + t * 84).toFixed(2) + " " + (yy + Math.sin(t * Math.PI * 4) * 6.5).toFixed(2);
         }
       }
       return d;
@@ -154,31 +167,21 @@
     })(),
   };
 
-  // ---------- the live overlay ----------
+  // ---------- the live preview ----------
   function renderOverlay() {
-    if (sym.shape === "none") { overlay.setAttribute("hidden", ""); return; }
+    if (!sym.shape) { overlay.setAttribute("hidden", ""); return; }
     overlay.removeAttribute("hidden");
     overlayPath.setAttribute("d", PATHS[sym.shape]);
     overlay.classList.toggle("glow", sym.style === "glow");
     overlay.classList.toggle("shadow", sym.style === "shadow");
     overlay.style.width = overlay.style.height = sym.size + "px";
     overlay.style.transform = `translate(${sym.x - sym.size / 2}px, ${sym.y - sym.size / 2}px)`;
-    // A thin contrasting outline keeps it visible on bright or dark scenes.
     const edge = sym.style === "glow" ? "rgba(0,0,0,.55)" : "rgba(255,255,255,.6)";
     const glow = sym.style === "glow" ? "rgba(255,220,160,.9)" : "rgba(20,18,30,.7)";
     overlay.style.filter =
       `drop-shadow(0 0 1px ${edge}) drop-shadow(0 0 1px ${edge}) drop-shadow(0 0 ${sym.size * 0.06}px ${glow})`;
     overlay.style.opacity = String(0.5 + 0.5 * sym.strength);
   }
-
-  document.querySelectorAll("#symbols button").forEach((b) =>
-    b.addEventListener("click", (e) => {
-      e.stopPropagation();
-      sym.shape = b.dataset.v;
-      document.querySelectorAll("#symbols button").forEach((x) => x.classList.toggle("on", x === b));
-      if (navigator.vibrate) navigator.vibrate(8);
-      renderOverlay();
-    }));
 
   function setStyle(s) {
     sym.style = s;
@@ -194,22 +197,28 @@
     renderOverlay();
   });
 
-  // Drag to move, pinch to resize, double-tap to switch glow/shadow.
+  // One finger drags. Two fingers only resize (the symbol stays where it is).
+  // Double-tap switches glow/shadow.
   const pointers = new Map();
   let gesture = null;
   let lastTap = 0;
+
+  function startGesture() {
+    const pts = [...pointers.values()];
+    if (!pts.length) { gesture = null; return; }
+    gesture = { n: pts.length, sx: sym.x, sy: sym.y, size: sym.size, p0: pts[0] };
+    if (pts.length >= 2) gesture.d0 = Math.max(10, Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y));
+  }
 
   overlay.addEventListener("pointerdown", (e) => {
     e.preventDefault();
     e.stopPropagation();
     overlay.setPointerCapture(e.pointerId);
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    const now = performance.now();
-    if (pointers.size === 1 && now - lastTap < 300) setStyle(sym.style === "glow" ? "shadow" : "glow");
-    lastTap = now;
+    tapStart = pointers.size === 1 ? { t: performance.now(), x: e.clientX, y: e.clientY } : null;
     startGesture();
   });
-  overlay.addEventListener("pointermove", (e) => {
+  function onMove(e) {
     if (!pointers.has(e.pointerId) || !gesture) return;
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     const pts = [...pointers.values()];
@@ -218,30 +227,42 @@
       sym.y = gesture.sy + (pts[0].y - gesture.p0.y);
     } else if (pts.length >= 2 && gesture.n >= 2) {
       const d = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
-      const minS = Math.min(innerWidth, innerHeight) * 0.1, maxS = Math.min(innerWidth, innerHeight) * 0.95;
-      sym.size = Math.max(minS, Math.min(maxS, gesture.size * (d / gesture.d0)));
-      const mx = (pts[0].x + pts[1].x) / 2, my = (pts[0].y + pts[1].y) / 2;
-      sym.x = gesture.sx + (mx - gesture.m0.x);
-      sym.y = gesture.sy + (my - gesture.m0.y);
+      const m = Math.min(innerWidth, innerHeight);
+      sym.size = Math.max(m * 0.1, Math.min(m * 0.95, gesture.size * (d / gesture.d0)));
     }
     renderOverlay();
-  });
+  }
+  overlay.addEventListener("pointermove", onMove);
   const endPointer = (e) => { pointers.delete(e.pointerId); startGesture(); };
+  // A double-tap is two quick taps that don't move: drags and pinches never count.
+  let tapStart = null;
+  overlay.addEventListener("pointerup", (e) => {
+    const t = tapStart;
+    tapStart = null;
+    if (t && pointers.size === 1 && performance.now() - t.t < 250 &&
+        Math.hypot(e.clientX - t.x, e.clientY - t.y) < 10) {
+      const now = performance.now();
+      if (now - lastTap < 350) { setStyle(sym.style === "glow" ? "shadow" : "glow"); lastTap = 0; }
+      else lastTap = now;
+    } else {
+      lastTap = 0;
+    }
+  });
   overlay.addEventListener("pointerup", endPointer);
   overlay.addEventListener("pointercancel", endPointer);
 
-  function startGesture() {
-    const pts = [...pointers.values()];
-    if (!pts.length) { gesture = null; return; }
-    gesture = { n: pts.length, sx: sym.x, sy: sym.y, size: sym.size, p0: pts[0] };
-    if (pts.length >= 2) {
-      gesture.d0 = Math.max(10, Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y));
-      gesture.m0 = { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 };
-    }
-  }
-
-  // Tapping the viewfinder looks like tap-to-focus, and moves the symbol there.
+  // A pinch whose second finger lands on the viewfinder (not on the symbol)
+  // still resizes: track it there too.
   cam.addEventListener("pointerdown", (e) => {
+    if (pointers.size >= 1) {
+      tapStart = null;
+      lastTap = 0;
+      cam.setPointerCapture(e.pointerId);
+      pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      startGesture();
+      return;
+    }
+    // Otherwise: tap-to-focus, and the symbol jumps there.
     focusEl.style.left = e.clientX + "px";
     focusEl.style.top = e.clientY + "px";
     focusEl.animate(
@@ -257,15 +278,11 @@
     sym.y = e.clientY;
     renderOverlay();
   });
+  cam.addEventListener("pointermove", onMove);
+  cam.addEventListener("pointerup", endPointer);
+  cam.addEventListener("pointercancel", endPointer);
 
   // ---------- drawing the symbol into the photo ----------
-  function shapePath(ctx, shape) {
-    ctx.beginPath();
-    const p = new Path2D(PATHS[shape]);
-    return p;
-  }
-
-  // Blurred stroke: drawn off-canvas so only its shadow lands in place.
   function softStroke(ctx, shape, cx, cy, scale, lineW, color, blur) {
     const off = ctx.canvas.width * 3;
     ctx.save();
@@ -278,7 +295,7 @@
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
     ctx.strokeStyle = "#000";
-    ctx.stroke(shapePath(ctx, shape));
+    ctx.stroke(new Path2D(PATHS[shape]));
     ctx.restore();
   }
 
@@ -294,25 +311,24 @@
     return sum / (d.length / 4) / 255;
   }
 
-  // Where the overlay sits on the screen -> where it sits in the photo.
   function overlayInPhoto(canvas) {
     const vw = cam.videoWidth || 1, vh = cam.videoHeight || 1;
     const W = innerWidth, H = innerHeight;
-    const s = Math.max(W / vw, H / vh);            // video px -> screen px
+    const s = Math.max(W / vw, H / vh);
     const dw = vw * s, dh = vh * s;
     let fx = (sym.x - (W - dw) / 2) / dw;
     const fy = (sym.y - (H - dh) / 2) / dh;
     if (facing === "user") fx = 1 - fx;
-    const k = canvas.width / vw;                   // video px -> photo px
+    const k = canvas.width / vw;
     return { cx: fx * canvas.width, cy: fy * canvas.height, box: (sym.size / s) * k };
   }
 
   function addSymbol(canvas) {
-    if (sym.shape === "none") return;
+    if (!sym.shape) return;
     const W = canvas.width, H = canvas.height;
     const ctx = canvas.getContext("2d");
     const { cx, cy, box } = overlayInPhoto(canvas);
-    const scale = box / 100;                       // path units -> photo px
+    const scale = box / 100;
     const lw = 7.5 * scale;
     const k = sym.strength;
     const light = localLight(canvas, cx, cy, box * 0.35);
@@ -339,7 +355,6 @@
       ctx.restore();
     }
 
-    // Grain over the symbol area so it sits in the photo's noise.
     const r = Math.round(box * 0.65);
     const x0 = Math.max(0, Math.round(cx - r)), y0 = Math.max(0, Math.round(cy - r));
     const w = Math.min(W - x0, r * 2), h = Math.min(H - y0, r * 2);
@@ -420,9 +435,13 @@
     return seg;
   }
 
-  async function withExif(blob, d) {
-    const src = new Uint8Array(await blob.arrayBuffer());
-    if (src[0] !== 0xff || src[1] !== 0xd8) return blob;
+  // Everything here is synchronous on purpose: the iPhone only opens the
+  // share sheet if it's asked within the same tap as the shutter.
+  function jpegWithExif(canvas, d) {
+    const url = canvas.toDataURL("image/jpeg", 0.92);
+    const bin = atob(url.slice(url.indexOf(",") + 1));
+    const src = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) src[i] = bin.charCodeAt(i);
     let rest = 2;
     if (src[2] === 0xff && src[3] === 0xe0) rest = 4 + ((src[4] << 8) | src[5]);
     const exif = buildExif(d);
@@ -430,14 +449,14 @@
     out.set([0xff, 0xd8]);
     out.set(exif, 2);
     out.set(src.subarray(rest), 2 + exif.length);
-    return new Blob([out], { type: "image/jpeg" });
+    return out;
   }
 
-  function save(blob, name) {
-    const url = URL.createObjectURL(blob);
+  function download(file) {
+    const url = URL.createObjectURL(file);
     const a = document.createElement("a");
     a.href = url;
-    a.download = name;
+    a.download = file.name;
     a.style.display = "none";
     document.body.appendChild(a);
     a.click();
@@ -445,20 +464,23 @@
     setTimeout(() => URL.revokeObjectURL(url), 60000);
   }
 
-  // Optional: if the page was opened with a performer code, a copy goes to
-  // that performer's receiver too (never stored). Not needed for the trick.
-  function sendToPerformer(blob) {
+  function sendToPerformer(file) {
     if (!/^[A-Za-z0-9]{6,16}$/.test(code)) return;
     fetch("/api/photo/" + encodeURIComponent(code), {
-      method: "POST", headers: { "Content-Type": "image/jpeg" }, body: blob,
+      method: "POST", headers: { "Content-Type": "image/jpeg" }, body: file,
     }).catch(() => {});
   }
 
-  // ---------- the shutter ----------
-  shutter.addEventListener("click", async (e) => {
+  function done() {
+    shots++;
+    // Leave an innocent tab behind once the performer leaves the page.
+    if (IOS) setTimeout(() => location.replace(CLEAN_URL), 400);
+  }
+
+  // ---------- step 3: the shutter ----------
+  shutter.addEventListener("click", (e) => {
     e.stopPropagation();
-    if (busy || !cam.videoWidth) return;
-    busy = true;
+    if (!cam.videoWidth) return;
     const when = new Date();
 
     const vw = cam.videoWidth, vh = cam.videoHeight;
@@ -470,81 +492,35 @@
     if (facing === "user") { ctx.translate(canvas.width, 0); ctx.scale(-1, 1); }
     ctx.drawImage(cam, 0, 0, canvas.width, canvas.height);
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-
-    flash.animate([{ opacity: 0.85 }, { opacity: 0 }], { duration: 180, easing: "ease-out" });
-    if (navigator.vibrate) navigator.vibrate(12);
-    flyToThumb(canvas.toDataURL("image/jpeg", 0.6));
-
     addSymbol(canvas);
-    const raw = await new Promise((res) => canvas.toBlob(res, "image/jpeg", 0.92));
-    if (!raw) { busy = false; return; }
-    const blob = await withExif(raw, when);
-    const name = fileName(when);
-    if (IOS) {
-      // iPhone: Photos only accepts it through the share sheet, which needs
-      // its own tap. The photo waits; tapping the thumbnail opens the sheet.
-      pendingFile = new File([blob], name, { type: "image/jpeg", lastModified: when.getTime() });
-    } else {
-      save(blob, name);
-    }
-    sendToPerformer(blob);
-    shots++;
-    log("saved", name, Math.round(blob.size / 1024) + "KB", sym.shape, sym.style, sym.strength);
 
-    // Clear the symbol so nothing lingers on screen after the shot.
-    sym.shape = "none";
-    document.querySelectorAll("#symbols button").forEach((x) => x.classList.toggle("on", x.dataset.v === "none"));
-    renderOverlay();
+    const bytes = jpegWithExif(canvas, when);
+    const file = new File([bytes], fileName(when), { type: "image/jpeg", lastModified: when.getTime() });
+    log("ready", file.name, Math.round(file.size / 1024) + "KB", sym.shape, sym.style, sym.strength);
+
+    flash.animate([{ opacity: 0.85 }, { opacity: 0 }], { duration: 160, easing: "ease-out" });
+    sendToPerformer(file);
 
     if (DEBUG) {
-      previewImg.src = URL.createObjectURL(blob);
+      previewImg.src = URL.createObjectURL(file);
       preview.hidden = false;
     }
-    busy = false;
+
+    if (IOS && navigator.canShare && navigator.canShare({ files: [file] })) {
+      // Same tap → share sheet → "Save Image" → Photos.
+      navigator.share({ files: [file] })
+        .then(() => { log("saved via share"); done(); })
+        .catch((err) => log("share:", err && err.name)); // closed: shoot again
+    } else {
+      download(file); // Android: straight to the Download album
+      done();
+    }
   });
 
   preview.addEventListener("click", () => { preview.hidden = true; });
 
-  // iPhone: tap the corner thumbnail -> share sheet -> "Save Image" -> Photos.
-  document.getElementById("thumb").addEventListener("click", async (e) => {
-    e.stopPropagation();
-    if (!pendingFile) return;
-    const file = pendingFile;
-    try {
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({ files: [file] });
-        pendingFile = null;
-        log("shared", file.name);
-        return;
-      }
-    } catch (err) {
-      log("share:", err && err.name);
-      if (err && err.name === "AbortError") return; // sheet closed; tap again
-    }
-    save(file, file.name); // fallback: goes to Files → Downloads
-    pendingFile = null;
-  });
-
-  function flyToThumb(src) {
-    fly.src = src;
-    const t = document.getElementById("thumb").getBoundingClientRect();
-    const sx = t.width / innerWidth, sy = t.height / innerHeight;
-    fly.animate(
-      [
-        { opacity: 1, transform: "translate(0,0) scale(1,1)", borderRadius: "0px" },
-        { opacity: 1, transform: `translate(${t.left}px, ${t.top}px) scale(${sx}, ${sy})`, borderRadius: "400px" },
-      ],
-      { duration: 380, easing: "cubic-bezier(.4,0,.2,1)" }
-    ).onfinish = () => {
-      thumbImg.src = src;
-      thumbImg.classList.add("on");
-    };
-  }
-
-  // After the shot, once the performer leaves the page, leave an innocent tab.
   document.addEventListener("visibilitychange", () => {
-    // (Not while the iPhone share sheet is waiting to be used.)
-    if (document.visibilityState === "hidden" && shots > 0 && !pendingFile) {
+    if (document.visibilityState === "hidden" && shots > 0) {
       setTimeout(() => location.replace(CLEAN_URL), 300);
     }
     if (document.visibilityState === "visible") keepAwake();
@@ -553,6 +529,7 @@
   // ---------- go ----------
   keepAwake();
   detectDevice();
-  renderOverlay();
-  startCamera();
+  startCamera(); // ask for the camera now, so it's ready by the time a symbol is picked
+  const preset = params.get("s");
+  if (SHAPES.includes(preset)) choose(preset);
 })();

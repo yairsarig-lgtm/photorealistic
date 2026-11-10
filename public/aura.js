@@ -22,7 +22,7 @@
   // real photographed effects, multiplied onto the photo (white = no change).
   const SETS = {
     light: { type: "vector", shapes: SHAPES },
-    shadow: { type: "image", blend: "multiply", files: { star: "/sets/shadow/star.png" } },
+    shadow: { type: "image", blend: "multiply", files: Object.fromEntries(SHAPES.map((k) => [k, `/sets/shadow/${k}.png?v=2`])) },
   };
   let currentSet = SETS[params.get("set")] ? params.get("set") : "light";
   const images = {};

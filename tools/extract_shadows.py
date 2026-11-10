@@ -13,7 +13,13 @@ import numpy as np
 from PIL import Image, ImageFilter
 from scipy import ndimage
 
-src, out_dir, names = sys.argv[1], sys.argv[2], sys.argv[3:]
+args = sys.argv[1:]
+grow_frac, target = 0.035, None
+while args and args[0].startswith("--"):
+    flag, val = args.pop(0), float(args.pop(0))
+    if flag == "--grow": grow_frac = val      # how far apart parts of one symbol may be
+    if flag == "--depth": target = val        # darkest value to normalise to (e.g. 0.55)
+src, out_dir, names = args[0], args[1], args[2:]
 os.makedirs(out_dir, exist_ok=True)
 a = np.asarray(Image.open(src).convert("RGB")).astype(np.float64) / 255.0
 lum = a @ np.array([0.2126, 0.7152, 0.0722])
@@ -40,7 +46,7 @@ ratio = np.where(ratio > 0.985, 1.0, ratio)
 
 # 3. Find each symbol: shadow pixels, grown so nearby parts merge into one.
 mask = smooth < 0.9
-grown = ndimage.binary_dilation(mask, iterations=max(6, int(min(H, W) * 0.035)))
+grown = ndimage.binary_dilation(mask, iterations=max(3, int(min(H, W) * grow_frac)))
 labels, n = ndimage.label(grown)
 boxes = []
 for i, sl in enumerate(ndimage.find_objects(labels), 1):
@@ -80,6 +86,9 @@ for name, (y0, y1, x0, x1) in zip(names, ordered):
     own[sy0 - oy:sy1 - oy, sx0 - ox:sx1 - ox] = lab == mid
     own = ndimage.binary_dilation(own, iterations=4)
     canvas = np.where(own, canvas, 1.0)
+    if target is not None:   # same depth as the other sets
+        depth = 1 - np.percentile(canvas[canvas < 0.98], 2) if (canvas < 0.98).any() else 0
+        if depth > 0: canvas = 1 - (1 - canvas) * min(1.0, (1 - target) / depth)
     edge = max(2, int(size * 0.04))
     ramp = np.ones(size); ramp[:edge] = np.linspace(0, 1, edge); ramp[-edge:] = np.linspace(1, 0, edge)
     canvas = 1 - (1 - canvas) * np.minimum.outer(ramp, ramp)

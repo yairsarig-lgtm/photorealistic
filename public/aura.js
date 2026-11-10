@@ -60,7 +60,7 @@
   const sym = {
     shape: null,
     style: params.get("look") === "shadow" ? "shadow" : "glow",
-    strength: 0.5,
+    strength: 0.3,
     x: innerWidth / 2,
     y: innerHeight * 0.32,
     size: Math.min(innerWidth, innerHeight) * 0.32,
@@ -213,10 +213,12 @@
     const g = c.getContext("2d");
     g.fillStyle = "#fff";
     g.fillRect(0, 0, N, N);
-    g.globalCompositeOperation = "multiply";
-    const vs = N * 0.6, ss = N * 0.5;            // value and suit sizes (images have margins)
-    g.drawImage(vi, (N - vs) / 2, N * 0.0, vs, vs);
-    g.drawImage(si, (N - ss) / 2, N * 0.47, ss, ss);
+    // "darken" keeps the darker of the two where they meet, like two real
+    // shadows from one lamp: they join without doubling into a dark seam.
+    g.globalCompositeOperation = "darken";
+    const vs = N * 0.56, ss = N * 0.46;          // value and suit sizes (images have margins)
+    g.drawImage(vi, (N - vs) / 2, 0, vs, vs);
+    g.drawImage(si, (N - ss) / 2, N * 0.53, ss, ss);  // a small gap below the value
     sym.shape = "card";
     sym.image = c;
     overlayImg.setAttribute("href", c.toDataURL("image/png"));

@@ -28,7 +28,7 @@ Photo taken via QR page on the spectator's phone, "plucked" out of the screen, r
 ## Symbol sets (`public/sets/`)
 - **Light** (drawn): circle, cross, waves, square, star — glow or shadow style.
 - **Shadows** (`sets/shadow/`): the five ESP symbols, real photographed shadows, all from one matching image. Live.
-- **Cards** (`sets/cards/`): hearts, diamonds, clubs, spades; A, 2–10, J, Q, K. Live: combined at pick time into one shadow (value over suit).
+- **Cards** (`sets/cards/`): hearts, diamonds, clubs, spades; A, 2–10, J, Q, K. Live: combined at pick time into one shadow, value over suit, placed as close as possible without the solid parts overlapping (soft edges blend, "darken" join). Card images are pre-softened (blur 7px at 1024).
 
 Image symbols are white-background layers multiplied onto the photo (white = no change), all normalised to the same depth (darkest ≈ 0.55).
 

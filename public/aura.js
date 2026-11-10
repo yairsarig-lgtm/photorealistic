@@ -28,7 +28,7 @@
     light: { type: "vector", shapes: SHAPES },
     shadow: { type: "image", blend: "multiply", files: Object.fromEntries(SHAPES.map((k) => [k, `/sets/shadow/${k}.png?v=2`])) },
   };
-  const CARD = (name) => `/sets/cards/${name}.png?v=1`;
+  const CARD = (name) => `/sets/cards/${name}.png?v=2`;
   let currentSet = params.get("set") === "light" ? "light" : "shadow";
   const images = {};
   function loadImage(url) {
@@ -203,6 +203,23 @@
     openCamera(set.type === "image");
   }
 
+  // Where the solid part of a shadow image starts and ends (fractions 0–1),
+  // ignoring its soft edge.
+  function inkBox(img) {
+    const n = 256, c = document.createElement("canvas");
+    c.width = c.height = n;
+    const g = c.getContext("2d", { willReadFrequently: true });
+    g.drawImage(img, 0, 0, n, n);
+    const d = g.getImageData(0, 0, n, n).data;
+    let x0 = n, y0 = n, x1 = 0, y1 = 0;
+    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+      if (d[(y * n + x) * 4] < 0.82 * 255) {
+        if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+      }
+    }
+    return { x0: x0 / n, y0: y0 / n, x1: (x1 + 1) / n, y1: (y1 + 1) / n };
+  }
+
   // A card is one shadow: the value above the suit, like a card's corner.
   async function chooseCard(value, s) {
     const [vi, si] = await Promise.all([loadImage(CARD(value)), loadImage(CARD(s))]);
@@ -213,12 +230,20 @@
     const g = c.getContext("2d");
     g.fillStyle = "#fff";
     g.fillRect(0, 0, N, N);
-    // "darken" keeps the darker of the two where they meet, like two real
-    // shadows from one lamp: they join without doubling into a dark seam.
+    // Placed as close as possible without the solid parts overlapping: the
+    // suit's top meets the value's bottom (measured on each image), and their
+    // soft edges blend. "darken" keeps the darker of the two where they meet,
+    // like two real shadows from one lamp, so there's no doubled seam.
     g.globalCompositeOperation = "darken";
     const vs = N * 0.56, ss = N * 0.46;          // value and suit sizes (images have margins)
-    g.drawImage(vi, (N - vs) / 2, 0, vs, vs);
-    g.drawImage(si, (N - ss) / 2, N * 0.53, ss, ss);  // a small gap below the value
+    const vb = inkBox(vi), sb = inkBox(si);
+    let vy = 0;
+    let sy = vy + vb.y1 * vs - sb.y0 * ss;
+    const top = vy + vb.y0 * vs, bottom = sy + sb.y1 * ss;
+    const shift = (N - (bottom - top)) / 2 - top;  // centre the pair in the layer
+    vy += shift; sy += shift;
+    g.drawImage(vi, (N - vs) / 2, vy, vs, vs);
+    g.drawImage(si, (N - ss) / 2, sy, ss, ss);
     sym.shape = "card";
     sym.image = c;
     overlayImg.setAttribute("href", c.toDataURL("image/png"));

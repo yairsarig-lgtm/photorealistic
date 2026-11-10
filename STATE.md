@@ -1,6 +1,6 @@
 # Project state — Photorealistic
 
-_Last updated: 2026-11-10_
+_Last updated: 2026-11-10 (picker with cards live)_
 
 Live site: https://photorealistic.yairsarig.workers.dev
 Hosting: Cloudflare Workers (account yairsarig@gmail.com), deployed automatically on every push to `main` via Workers Builds.
@@ -11,7 +11,7 @@ Hosting: Cloudflare Workers (account yairsarig@gmail.com), deployed automaticall
 A stand-alone fake camera opened from its own QR on the spectator's phone. Nothing is needed on the performer's phone.
 
 Flow:
-1. **Picker** — the performer taps a symbol (only the performer sees the screen).
+1. **Picker** — five rows of the real shadow images (only the performer sees the screen): ESP shapes; suits; A–5; 6–10; J Q K. A shape goes straight to the camera. A suit highlights and wakes the value rows; a value then goes to the camera with that card. A card is **one shadow, value above suit** (like a card's corner).
 2. **Camera** — a preview of the symbol sits on the live viewfinder. Two fingers anywhere move, resize and rotate it (one finger does nothing). Chips: Glow/Shadow (vector set only) and strength %.
 3. **Shutter** — builds the photo with the symbol blended in, camera-style file name (Samsung `YYYYMMDD_HHMMSS.jpg`, Pixel `PXL_…`, else `IMG_…`) and EXIF (make, model, time, timezone).
    - iPhone: the share sheet opens in the same tap → **Save Image** → Photos.
@@ -28,15 +28,15 @@ Photo taken via QR page on the spectator's phone, "plucked" out of the screen, r
 ## Symbol sets (`public/sets/`)
 - **Light** (drawn): circle, cross, waves, square, star — glow or shadow style.
 - **Shadows** (`sets/shadow/`): the five ESP symbols, real photographed shadows, all from one matching image. Live.
-- **Cards** (`sets/cards/`): hearts, diamonds, clubs, spades; A, 2–10, J, Q, K. Extracted, **not wired into the picker yet.**
+- **Cards** (`sets/cards/`): hearts, diamonds, clubs, spades; A, 2–10, J, Q, K. Live: combined at pick time into one shadow (value over suit).
 
 Image symbols are white-background layers multiplied onto the photo (white = no change), all normalised to the same depth (darkest ≈ 0.55).
 
 To add new shadow images: `python3 tools/extract_shadows.py [--grow 0.012] [--depth 0.55] photo.png out_dir name1 name2 …` (names in reading order). Generate source images with the "real shadow on a plaster wall, lamp from the upper left" prompt so all sets match.
 
 ## Next
-- **Picker redesign (mockup sent, awaiting approval):** five rows — ESP shapes; suits; A–5; 6–10; J Q K. Tapping a shape goes straight to the camera. Tapping a suit lights up the value rows; tapping a value goes to the camera.
-- Open question: how a card is drawn (value + suit as one shadow, or two separately placed shadows).
+- Open question: keep cards as one shadow, or place value and suit as two separate shadows.
+- The drawn "Light" set (glow) is no longer in the picker; still reachable with `?set=light`.
 - Clouds set (images to be generated: cloud on pure black, blended with screen).
 - Neutral custom domain, so Safari suggestions/history don't show the project name.
 - iPhone not yet tested for every change; Android save location to verify on Samsung.

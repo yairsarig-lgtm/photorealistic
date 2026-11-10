@@ -24,22 +24,16 @@
     } catch (e) {}
   })();
 </script>
-<link rel="stylesheet" href="/aura.css?v=14">
+<link rel="stylesheet" href="/aura.css?v=16">
 </head>
 <body>
   <!-- Step 1: pick the symbol (only the performer sees the screen). -->
   <main id="pick">
-    <div id="setTabs">
-      <button data-set="light" class="on">Light</button>
-      <button data-set="shadow">Shadows</button>
-    </div>
-    <div id="pickGrid">
-      <button data-v="circle" aria-label="Circle"><svg viewBox="-50 -50 100 100"><circle r="38"/></svg></button>
-      <button data-v="cross" aria-label="Cross"><svg viewBox="-50 -50 100 100"><path d="M0-40V40M-40 0H40"/></svg></button>
-      <button data-v="waves" aria-label="Waves"><svg viewBox="-50 -50 100 100"><path d="M-40-24q10-13 20 0t20 0 20 0 20 0M-40 0q10-13 20 0t20 0 20 0 20 0M-40 24q10-13 20 0t20 0 20 0 20 0"/></svg></button>
-      <button data-v="square" aria-label="Square"><svg viewBox="-50 -50 100 100"><rect x="-34" y="-34" width="68" height="68"/></svg></button>
-      <button data-v="star" aria-label="Star"><svg viewBox="-50 -50 100 100"><path d="M0-38 22.3 34.6-36.1-8H36.1L-22.3 34.6Z"/></svg></button>
-    </div>
+    <div class="prow" data-kind="shape"></div>
+    <div class="prow suits" data-kind="suit"></div>
+    <div class="prow values off" data-kind="value" data-list="A,2,3,4,5"></div>
+    <div class="prow values off" data-kind="value" data-list="6,7,8,9,10"></div>
+    <div class="prow values off" data-kind="value" data-list="J,Q,K"></div>
   </main>
 
   <!-- Step 2: the camera, with the symbol preview to place by hand. -->
@@ -64,6 +58,6 @@
   <div id="preview" hidden><img id="previewImg" alt=""><p>debug preview: tap to close</p></div>
   <div id="debug" hidden></div>
 
-  <script src="/aura.js?v=15"></script>
+  <script src="/aura.js?v=16"></script>
 </body>
 </html>

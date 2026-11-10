@@ -20,11 +20,16 @@
   const SHAPES = ["circle", "cross", "waves", "square", "star"];
   // Sets of symbols. "vector" sets are drawn (glow/shadow); "image" sets use
   // real photographed effects, multiplied onto the photo (white = no change).
+  const SUITS = ["hearts", "diamonds", "clubs", "spades"];
+  const VALUES = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
+  // Sets of symbols. "vector" sets are drawn (glow/shadow); "image" sets are
+  // real photographed shadows, multiplied onto the photo (white = no change).
   const SETS = {
     light: { type: "vector", shapes: SHAPES },
     shadow: { type: "image", blend: "multiply", files: Object.fromEntries(SHAPES.map((k) => [k, `/sets/shadow/${k}.png?v=2`])) },
   };
-  let currentSet = SETS[params.get("set")] ? params.get("set") : "light";
+  const CARD = (name) => `/sets/cards/${name}.png?v=1`;
+  let currentSet = params.get("set") === "light" ? "light" : "shadow";
   const images = {};
   function loadImage(url) {
     if (!images[url]) {
@@ -148,20 +153,45 @@
     startCamera();
   });
 
-  // ---------- step 1: pick the set and the symbol ----------
-  function showSet(name) {
-    currentSet = name;
-    const set = SETS[name];
-    document.querySelectorAll("#setTabs button").forEach((b) => b.classList.toggle("on", b.dataset.set === name));
-    document.querySelectorAll("#pickGrid button").forEach((b) => {
-      b.disabled = set.type === "image" ? !set.files[b.dataset.v] : false;
-    });
-    if (set.type === "image") Object.values(set.files).forEach(loadImage);
-  }
-  document.querySelectorAll("#setTabs button").forEach((b) =>
-    b.addEventListener("click", () => showSet(b.dataset.set)));
+  // ---------- step 1: the picker ----------
+  // Row 1: ESP shapes → straight to the camera.
+  // Row 2: suits → selects a suit and wakes up the value rows.
+  // Rows 3–5: A–5, 6–10, J Q K → straight to the camera with that card.
+  let suit = null;
 
-  async function choose(shape) {
+  function tile(kind, name, src) {
+    const b = document.createElement("button");
+    b.dataset.kind = kind;
+    b.dataset.v = name;
+    b.setAttribute("aria-label", name);
+    b.innerHTML = `<img src="${src}" alt="">`;
+    return b;
+  }
+  const rowShape = document.querySelector('.prow[data-kind="shape"]');
+  SHAPES.forEach((n) => rowShape.appendChild(tile("shape", n, `/sets/shadow/${n}.png?v=2`)));
+  const rowSuit = document.querySelector('.prow[data-kind="suit"]');
+  SUITS.forEach((n) => rowSuit.appendChild(tile("suit", n, CARD(n))));
+  document.querySelectorAll('.prow[data-kind="value"]').forEach((r) =>
+    r.dataset.list.split(",").forEach((n) => r.appendChild(tile("value", n, CARD(n)))));
+
+  pick.addEventListener("click", (e) => {
+    const b = e.target.closest("button");
+    if (!b) return;
+    if (b.dataset.kind === "shape") {
+      chooseShape(b.dataset.v);
+    } else if (b.dataset.kind === "suit") {
+      suit = suit === b.dataset.v ? null : b.dataset.v;
+      document.querySelectorAll('button[data-kind="suit"]').forEach((x) => x.classList.toggle("sel", x.dataset.v === suit));
+      document.querySelectorAll(".prow.values").forEach((r) => r.classList.toggle("off", !suit));
+      if (navigator.vibrate) navigator.vibrate(8);
+    } else if (b.dataset.kind === "value" && suit) {
+      chooseCard(b.dataset.v, suit);
+    }
+  });
+  // Load the card images in the background so the card builds instantly.
+  [...SUITS, ...VALUES].forEach((n) => loadImage(CARD(n)));
+
+  async function chooseShape(shape) {
     const set = SETS[currentSet];
     sym.shape = shape;
     sym.image = null;
@@ -170,7 +200,31 @@
       if (!sym.image) return;
       overlayImg.setAttribute("href", set.files[shape]);
     }
-    styleChip.hidden = set.type === "image";
+    openCamera(set.type === "image");
+  }
+
+  // A card is one shadow: the value above the suit, like a card's corner.
+  async function chooseCard(value, s) {
+    const [vi, si] = await Promise.all([loadImage(CARD(value)), loadImage(CARD(s))]);
+    if (!vi || !si) return;
+    const N = 1024;
+    const c = document.createElement("canvas");
+    c.width = c.height = N;
+    const g = c.getContext("2d");
+    g.fillStyle = "#fff";
+    g.fillRect(0, 0, N, N);
+    g.globalCompositeOperation = "multiply";
+    const vs = N * 0.6, ss = N * 0.5;            // value and suit sizes (images have margins)
+    g.drawImage(vi, (N - vs) / 2, N * 0.0, vs, vs);
+    g.drawImage(si, (N - ss) / 2, N * 0.47, ss, ss);
+    sym.shape = "card";
+    sym.image = c;
+    overlayImg.setAttribute("href", c.toDataURL("image/png"));
+    openCamera(true);
+  }
+
+  function openCamera(isImage) {
+    styleChip.hidden = isImage;
     pick.hidden = true;
     camView.hidden = false;
     if (navigator.vibrate) navigator.vibrate(10);
@@ -178,9 +232,6 @@
     if (!stream) startCamera();
     cam.play().catch(() => {});
   }
-  document.querySelectorAll("#pickGrid button").forEach((b) =>
-    b.addEventListener("click", () => choose(b.dataset.v)));
-  showSet(currentSet);
 
   // ---------- the symbols ----------
   const PATHS = {
@@ -615,5 +666,5 @@
   detectDevice();
   startCamera(); // ask for the camera now, so it's ready by the time a symbol is picked
   const preset = params.get("s");
-  if (SHAPES.includes(preset) && (SETS[currentSet].type !== "image" || SETS[currentSet].files[preset])) choose(preset);
+  if (SHAPES.includes(preset)) chooseShape(preset);
 })();

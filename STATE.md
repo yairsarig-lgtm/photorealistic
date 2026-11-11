@@ -41,6 +41,14 @@ To add new shadow images: `python3 tools/extract_shadows.py [--grow 0.012] [--de
 - Neutral custom domain, so Safari suggestions/history don't show the project name.
 - iPhone not yet tested for every change; Android save location to verify on Samsung.
 
+## Competition (researched 2026-11-12)
+- **ISO** (Kerstein & Qualter, 2023, $59.99, iPhone only): fake camera on the borrowed phone, paired by a small disguised QR (or NFC), "nothing installed"; puts a photo into the spectator's camera roll. Same core method as Aura.
+- **Onyx** (Kerstein, Dec 2025, free app + AI credits, iPhone): alters a photo on the spectator's phone "moments after it's taken", with the choice made *after* the shot (delayed input from voice, clock swipe, or peek apps: Earworm, WebFX, WikiTest, PeekSmith, Bridge). AI edits (cards, clocks, words, shadows, clouds…). Instax printing. Sold as a bundle with ISO. <1,000 downloads, 13 ratings.
+- Criticism (The Jerx): AI edits can look obviously fake.
+- Our differences: Android + iPhone; no performer phone/app at all; no per-use cost; real photographed shadows, placed by hand.
+- Their lead: choice made after the photo; peek integrations; AI can change anything; brand.
+- Priority from this: "shoot first, choose after", and realism (shadow behind the person).
+
 ## Code map
 - `src/index.ts` — Worker: routes, Relay Durable Object (Pluck relay + per-code settings).
 - `public/aura.html|css|js` — Aura camera. `public/aura-setup.html` — Aura QR page.
